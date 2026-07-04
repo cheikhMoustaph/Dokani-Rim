@@ -32,7 +32,20 @@ export type AppView =
   | 'campaign-form'
   | 'storefront-product'
   | 'storefront-cart'
-  | 'storefront-checkout';
+  | 'storefront-checkout'
+  | 'store-builder'
+  | 'store-builder-identity'
+  | 'store-builder-sections'
+  | 'store-builder-pages'
+  | 'store-builder-social'
+  | 'store-builder-preview'
+  | 'accounting'
+  | 'accounting-overview'
+  | 'accounting-payment-methods'
+  | 'accounting-payment-review'
+  | 'accounting-transactions'
+  | 'accounting-reports'
+  | 'storefront-page';
 
 const ALL_VIEWS: AppView[] = [
   'landing','login','signup','forgot-password','onboarding','admin-dashboard',
@@ -40,6 +53,10 @@ const ALL_VIEWS: AppView[] = [
   'campaigns','coupons','payments','invoices','delivery','delivery-agents',
   'reports','settings','automation','order-details','product-form','category-form',
   'coupon-form','campaign-form','storefront-product','storefront-cart','storefront-checkout',
+  'store-builder','store-builder-identity','store-builder-sections','store-builder-pages',
+  'store-builder-social','store-builder-preview',
+  'accounting','accounting-overview','accounting-payment-methods','accounting-payment-review',
+  'accounting-transactions','accounting-reports','storefront-page',
 ];
 
 const VALID_VIEWS = new Set<string>(ALL_VIEWS);

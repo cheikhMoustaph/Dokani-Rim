@@ -1,7 +1,9 @@
 import type {
   DemoStore, DemoProduct, DemoCategory, DemoOrder, DemoCustomer,
   DemoCampaign, DemoCoupon, DemoDeliveryZone, DemoDeliveryAgent,
-  DemoInvoice, DemoAutomation, CartItem
+  DemoInvoice, DemoAutomation, CartItem, DemoPaymentMethod,
+  DemoPaymentReceipt, DemoAccountingTransaction, DemoStorePage,
+  DemoSocialLink, DemoThemeSettings, OnboardingChecklistItem,
 } from './types';
 
 // ============ STORES ============
@@ -357,3 +359,143 @@ export function clearCart() {
 export function getCartTotal(): number {
   return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
+
+// ============ DEV MODE FLAG ============
+// When true, shows demo data in merchant dashboard. Real new accounts should use empty state.
+export const IS_DEV_MODE = true;
+
+// ============ EMPTY MERCHANT STATE ============
+export const EMPTY_MERCHANT_STATS = {
+  totalOrders: 0,
+  newOrders: 0,
+  customers: 0,
+  products: 0,
+  revenue: 0,
+  activeCampaigns: 0,
+  pendingPayments: 0,
+  deliveryOrders: 0,
+};
+
+// ============ ONBOARDING CHECKLIST ============
+export const ONBOARDING_CHECKLIST: OnboardingChecklistItem[] = [
+  { id: 'oc1', label: 'أضف شعار المتجر', view: 'store-builder-identity', completed: false },
+  { id: 'oc2', label: 'عدّل بيانات المتجر', view: 'store-builder-identity', completed: false },
+  { id: 'oc3', label: 'أضف أول منتج', view: 'product-form', completed: false },
+  { id: 'oc4', label: 'أضف صفحات الشروط والسياسات', view: 'store-builder-pages', completed: false },
+  { id: 'oc5', label: 'أضف روابط السوشيال ميديا', view: 'store-builder-social', completed: false },
+  { id: 'oc6', label: 'شارك رابط المتجر', view: 'store-builder-preview', completed: false },
+  { id: 'oc7', label: 'استقبل أول طلب', view: 'orders', completed: false },
+];
+
+// ============ PAYMENT METHODS (Demo Data) ============
+export const DEMO_PAYMENT_METHODS: DemoPaymentMethod[] = [
+  { id: 'pm1', storeId: 's1', name: 'Bankily', type: 'bankily', logoUrl: null, accountName: 'بوتيك النخبة', accountNumber: '22222333', instructions: 'حوّل المبلغ إلى رقم Bankily التالي وأرسل لنا صورة الإيصال', isActive: true, isDefault: false, sortOrder: 1 },
+  { id: 'pm2', storeId: 's1', name: 'Sedad', type: 'sedad', logoUrl: null, accountName: 'بوتيك النخبة', accountNumber: '22222333', instructions: 'حوّل المبلغ إلى رقم Sedad التالي وأرسل لنا صورة الإيصال', isActive: true, isDefault: false, sortOrder: 2 },
+  { id: 'pm3', storeId: 's1', name: 'Masrvi', type: 'masrvi', logoUrl: null, accountName: 'بوتيك النخبة', accountNumber: '22222333', instructions: 'حوّل المبلغ إلى رقم Masrvi التالي وأرسل لنا صورة الإيصال', isActive: true, isDefault: false, sortOrder: 3 },
+  { id: 'pm4', storeId: 's1', name: 'BIM Bank', type: 'bim_bank', logoUrl: null, accountName: 'بوتيك النخبة', accountNumber: '001234567890', instructions: 'حوّل المبلغ إلى الحساب البنكي التالي وأرسل لنا صورة الإيصال', isActive: true, isDefault: false, sortOrder: 4 },
+  { id: 'pm5', storeId: 's1', name: 'Click', type: 'click', logoUrl: null, accountName: 'بوتيك النخبة', accountNumber: '22222333', instructions: 'حوّل المبلغ إلى رقم Click التالي وأرسل لنا صورة الإيصال', isActive: true, isDefault: false, sortOrder: 5 },
+  { id: 'pm6', storeId: 's1', name: 'الدفع عند الاستلام', type: 'cash', logoUrl: null, accountName: null, accountNumber: null, instructions: 'سيتم الدفع نقدًا عند استلام الطلب', isActive: true, isDefault: true, sortOrder: 0 },
+  { id: 'pm7', storeId: 's1', name: 'تحويل يدوي آخر', type: 'other', logoUrl: null, accountName: 'بوتيك النخبة', accountNumber: '22222333', instructions: 'تواصل معنا لمعرفة تفاصيل التحويل', isActive: false, isDefault: false, sortOrder: 6 },
+];
+
+// ============ PAYMENT RECEIPTS (Demo Data) ============
+export const DEMO_PAYMENT_RECEIPTS: DemoPaymentReceipt[] = [
+  { id: 'pr1', storeId: 's1', orderId: 'o2', customerId: 'cu2', paymentMethodId: 'pm1', paymentMethodName: 'Bankily', receiptUrl: null, referenceNumber: 'TXN-BNK-001', amount: 6200, status: 'waiting_confirmation', customerNote: 'حوّلت المبلغ', merchantNote: null, customerName: 'مريم محمد', orderNumber: 'ORD-002', createdAt: '2026-07-04T09:20:00', reviewedAt: null },
+  { id: 'pr2', storeId: 's1', orderId: 'o10', customerId: 'cu2', paymentMethodId: 'pm2', paymentMethodName: 'Sedad', receiptUrl: null, referenceNumber: 'TXN-SED-001', amount: 15700, status: 'waiting_confirmation', customerNote: 'التحويل تم بنجاح', merchantNote: null, customerName: 'مريم محمد', orderNumber: 'ORD-010', createdAt: '2026-07-04T11:15:00', reviewedAt: null },
+  { id: 'pr3', storeId: 's1', orderId: 'o3', customerId: 'cu3', paymentMethodId: 'pm6', paymentMethodName: 'الدفع عند الاستلام', receiptUrl: null, referenceNumber: null, amount: 1400, status: 'paid', customerNote: null, merchantNote: 'تم استلام المبلغ', customerName: 'خديجة ولد عبد الله', orderNumber: 'ORD-003', createdAt: '2026-07-03T14:00:00', reviewedAt: '2026-07-03T14:30:00' },
+  { id: 'pr4', storeId: 's1', orderId: 'o4', customerId: 'cu4', paymentMethodId: 'pm3', paymentMethodName: 'Masrvi', receiptUrl: null, referenceNumber: 'TXN-MSR-001', amount: 8000, status: 'paid', customerNote: null, merchantNote: 'تم التأكيد', customerName: 'آمنة محمدو', orderNumber: 'ORD-004', createdAt: '2026-07-03T11:05:00', reviewedAt: '2026-07-03T11:30:00' },
+  { id: 'pr5', storeId: 's1', orderId: 'o9', customerId: 'cu8', paymentMethodId: 'pm1', paymentMethodName: 'Bankily', receiptUrl: null, referenceNumber: 'TXN-BNK-002', amount: 7700, status: 'rejected', customerNote: 'المبلغ لا يتطابق', merchantNote: 'المبلغ المحول 5000 أوقية بدل 7700', customerName: 'رشيدة بنت محمد', orderNumber: 'ORD-009', createdAt: '2026-06-28T15:10:00', reviewedAt: '2026-06-28T16:00:00' },
+  { id: 'pr6', storeId: 's1', orderId: 'o6', customerId: 'cu6', paymentMethodId: 'pm4', paymentMethodName: 'BIM Bank', receiptUrl: null, referenceNumber: 'TXN-BIM-001', amount: 5200, status: 'paid', customerNote: null, merchantNote: null, customerName: 'حنّة مولاي', orderNumber: 'ORD-006', createdAt: '2026-07-02T10:05:00', reviewedAt: '2026-07-02T10:20:00' },
+  { id: 'pr7', storeId: 's1', orderId: 'o7', customerId: 'cu1', paymentMethodId: 'pm5', paymentMethodName: 'Click', receiptUrl: null, referenceNumber: 'TXN-CLK-001', amount: 9400, status: 'paid', customerNote: null, merchantNote: null, customerName: 'فاطمة بنت أحمد', orderNumber: 'ORD-007', createdAt: '2026-06-30T09:05:00', reviewedAt: '2026-06-30T09:30:00' },
+  { id: 'pr8', storeId: 's1', orderId: 'o5', customerId: 'cu5', paymentMethodId: 'pm6', paymentMethodName: 'الدفع عند الاستلام', receiptUrl: null, referenceNumber: null, amount: 3800, status: 'paid', customerNote: null, merchantNote: 'تم الدفع نقدًا', customerName: 'زينب بنت محمد', orderNumber: 'ORD-005', createdAt: '2026-07-02T16:30:00', reviewedAt: '2026-07-02T17:00:00' },
+];
+
+// ============ ACCOUNTING TRANSACTIONS (Demo Data) ============
+export const DEMO_TRANSACTIONS: DemoAccountingTransaction[] = [
+  { id: 'at1', storeId: 's1', orderId: 'o3', customerName: 'خديجة ولد عبد الله', paymentMethodName: 'الدفع عند الاستلام', type: 'cash_on_delivery', amount: 1400, status: 'paid', referenceNumber: null, receiptUrl: null, notes: null, orderNumber: 'ORD-003', createdAt: '2026-07-03T14:00:00', confirmedAt: '2026-07-03T14:30:00' },
+  { id: 'at2', storeId: 's1', orderId: 'o4', customerName: 'آمنة محمدو', paymentMethodName: 'Masrvi', type: 'manual_payment', amount: 8000, status: 'paid', referenceNumber: 'TXN-MSR-001', receiptUrl: null, notes: null, orderNumber: 'ORD-004', createdAt: '2026-07-03T11:05:00', confirmedAt: '2026-07-03T11:30:00' },
+  { id: 'at3', storeId: 's1', orderId: 'o5', customerName: 'زينب بنت محمد', paymentMethodName: 'الدفع عند الاستلام', type: 'cash_on_delivery', amount: 3800, status: 'paid', referenceNumber: null, receiptUrl: null, notes: null, orderNumber: 'ORD-005', createdAt: '2026-07-02T16:30:00', confirmedAt: '2026-07-02T17:00:00' },
+  { id: 'at4', storeId: 's1', orderId: 'o6', customerName: 'حنّة مولاي', paymentMethodName: 'BIM Bank', type: 'manual_payment', amount: 5200, status: 'paid', referenceNumber: 'TXN-BIM-001', receiptUrl: null, notes: null, orderNumber: 'ORD-006', createdAt: '2026-07-02T10:05:00', confirmedAt: '2026-07-02T10:20:00' },
+  { id: 'at5', storeId: 's1', orderId: 'o7', customerName: 'فاطمة بنت أحمد', paymentMethodName: 'Click', type: 'manual_payment', amount: 9400, status: 'paid', referenceNumber: 'TXN-CLK-001', receiptUrl: null, notes: null, orderNumber: 'ORD-007', createdAt: '2026-06-30T09:05:00', confirmedAt: '2026-06-30T09:30:00' },
+  { id: 'at6', storeId: 's1', orderId: 'o9', customerName: 'رشيدة بنت محمد', paymentMethodName: 'Bankily', type: 'sale_income', amount: -7700, status: 'rejected', referenceNumber: 'TXN-BNK-002', receiptUrl: null, notes: 'طلب ملغي - مبلغ مرفوض', orderNumber: 'ORD-009', createdAt: '2026-06-28T15:10:00', confirmedAt: null },
+];
+
+// ============ STORE PAGES (Demo Data) ============
+export const DEMO_STORE_PAGES: DemoStorePage[] = [
+  { id: 'sp1', storeId: 's1', title: 'من نحن', slug: 'about-us', content: 'بوتيك النخبة هو متجر إلكتروني متخصص في الأزياء والإكسسوارات النسائية في موريتانيا. نقدم لكم أجمل التصاميم العصرية والتقليدية بأسعار مناسبة وجودة عالية.\n\nنؤمن بأن كل امرأة تستحق أن تبدو بأبهى حلة، ولهذا نحرص على انتقاء أفضل المنتجات من أشهر الماركات والمصممين.', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2026-01-10' },
+  { id: 'sp2', storeId: 's1', title: 'اتصل بنا', slug: 'contact-us', content: 'يمكنكم التواصل معنا عبر:\n\nهاتف: 22222333\nواتساب: 22222333\nالمدينة: نواكشوط، موريتانيا\n\nساعات العمل: السبت - الخميس، 9 صباحاً - 9 مساءً', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2025-11-15' },
+  { id: 'sp3', storeId: 's1', title: 'الشروط والأحكام', slug: 'terms', content: 'باستخدامك لمتجر بوتيك النخبة فإنك توافق على الشروط والأحكام التالية:\n\n1. الأسعار المعروضة شاملة الضريبة.\n2. لا يمكن إلغاء الطلب بعد التأكيد.\n3. نحتفظ بحق تغيير الأسعار في أي وقت.', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2025-11-15' },
+  { id: 'sp4', storeId: 's1', title: 'سياسة الخصوصية', slug: 'privacy-policy', content: 'نحترم خصوصيتك ونلتزم بحماية بياناتك الشخصية. لا نشارك معلوماتك مع أطراف ثالثة.', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2025-11-15' },
+  { id: 'sp5', storeId: 's1', title: 'سياسة الاسترجاع والاستبدال', slug: 'return-policy', content: 'يمكنك إرجاع المنتج خلال 7 أيام من تاريخ الاستلام بشرط:\n\n- المنتج في حالته الأصلية\n- لم يتم استخدامه\n- التغليف سليم\n\nسيتم استرداد المبلغ خلال 3-5 أيام عمل.', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2025-11-15' },
+  { id: 'sp6', storeId: 's1', title: 'سياسة التوصيل', slug: 'delivery-policy', content: 'نوفر خدمة التوصيل داخل نواكشوط.\n\n- تكلفة التوصيل: 200 - 500 أوقية حسب المنطقة\n- مدة التوصيل: 1-3 أيام عمل\n- يمكنكم أيضاً الاستلام من المتجر مباشرة', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2025-11-15' },
+  { id: 'sp7', storeId: 's1', title: 'سياسة الدفع', slug: 'payment-policy', content: 'نقبل طرق الدفع التالية:\n\n- الدفع عند الاستلام\n- Bankily\n- Sedad\n- Masrvi\n- BIM Bank\n- Click', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2026-07-04' },
+  { id: 'sp8', storeId: 's1', title: 'الأسئلة الشائعة', slug: 'faq', content: 'س: ما هي مدة التوصيل؟\nج: 1-3 أيام عمل داخل نواكشوط.\n\nس: هل يمكنني إرجاع المنتج؟\nج: نعم، خلال 7 أيام من الاستلام.\n\nس: ما هي طرق الدفع المتاحة؟\nج: الدفع عند الاستلام، Bankily، Sedad، Masrvi، BIM Bank، Click.', status: 'published', showInFooter: true, createdAt: '2025-11-15', updatedAt: '2025-12-01' },
+];
+
+// ============ SOCIAL LINKS (Demo Data) ============
+export const DEMO_SOCIAL_LINKS: DemoSocialLink[] = [
+  { id: 'sl1', storeId: 's1', platform: 'whatsapp', url: 'https://wa.me/22222333', isActive: true },
+  { id: 'sl2', storeId: 's1', platform: 'instagram', url: 'https://instagram.com/botique_nokhba', isActive: true },
+  { id: 'sl3', storeId: 's1', platform: 'facebook', url: 'https://facebook.com/botique.nokhba', isActive: true },
+  { id: 'sl4', storeId: 's1', platform: 'tiktok', url: 'https://tiktok.com/@botique_nokhba', isActive: true },
+  { id: 'sl5', storeId: 's1', platform: 'snapchat', url: 'https://snapchat.com/add/botique_nokhba', isActive: true },
+  { id: 'sl6', storeId: 's1', platform: 'youtube', url: '', isActive: false },
+  { id: 'sl7', storeId: 's1', platform: 'telegram', url: '', isActive: false },
+  { id: 'sl8', storeId: 's1', platform: 'website', url: 'https://dokani.mr/botique-ennokhba', isActive: true },
+];
+
+// ============ THEME SETTINGS (Demo Default) ============
+export const DEMO_THEME_SETTINGS: DemoThemeSettings = {
+  storeId: 's1',
+  primaryColor: '#0F7A4F',
+  secondaryColor: '#D6A84F',
+  heroTitle: 'بوتيك النخبة',
+  heroSubtitle: 'أجمل الأزياء والإكسسوارات النسائية في نواكشوط',
+  heroImageUrl: null,
+  layoutStyle: 'modern',
+  sections: [
+    { id: 'sec1', type: 'hero', title: 'بوتيك النخبة', subtitle: 'أجمل الأزياء والإكسسوارات النسائية في نواكشوط', imageUrl: null, visible: true, sortOrder: 0 },
+    { id: 'sec2', type: 'categories', title: 'التصنيفات', subtitle: 'تصفحي حسب الفئة', imageUrl: null, visible: true, sortOrder: 1 },
+    { id: 'sec3', type: 'featured_products', title: 'منتجات مميزة', subtitle: 'اختياراتنا المميزة لكِ', imageUrl: null, visible: true, sortOrder: 2 },
+    { id: 'sec4', type: 'best_sellers', title: 'الأكثر مبيعاً', subtitle: 'المنتجات الأكثر طلباً', imageUrl: null, visible: true, sortOrder: 3 },
+    { id: 'sec5', type: 'new_arrivals', title: 'وصل حديثاً', subtitle: 'أحدث المنتجات المضافة', imageUrl: null, visible: true, sortOrder: 4 },
+    { id: 'sec6', type: 'offers', title: 'عروض خاصة', subtitle: 'خصومات حصرية لفترة محدودة', imageUrl: null, visible: true, sortOrder: 5 },
+    { id: 'sec7', type: 'whatsapp_cta', title: 'اطلبي عبر واتساب', subtitle: 'تواصلي معنا مباشرة للطلب', imageUrl: null, visible: true, sortOrder: 6 },
+    { id: 'sec8', type: 'about', title: 'عن متجرنا', subtitle: 'نتعهد بتقديم أفضل المنتجات والخدمات', imageUrl: null, visible: true, sortOrder: 7 },
+    { id: 'sec9', type: 'delivery_info', title: 'معلومات التوصيل', subtitle: 'نوصل لجميع مناطق نواكشوط', imageUrl: null, visible: true, sortOrder: 8 },
+    { id: 'sec10', type: 'social_media', title: 'تابعينا', subtitle: 'على مواقع التواصل الاجتماعي', imageUrl: null, visible: true, sortOrder: 9 },
+  ],
+};
+
+// ============ NEW STORE DEFAULT THEME ============
+export const NEW_STORE_THEME: DemoThemeSettings = {
+  storeId: 'new',
+  primaryColor: '#0F7A4F',
+  secondaryColor: '#D6A84F',
+  heroTitle: 'مرحباً بكم في متجرنا',
+  heroSubtitle: 'تصفحي أحدث المنتجات',
+  heroImageUrl: null,
+  layoutStyle: 'modern',
+  sections: [
+    { id: 'sec1', type: 'hero', title: 'مرحباً بكم في متجرنا', subtitle: 'تصفحي أحدث المنتجات', imageUrl: null, visible: true, sortOrder: 0 },
+    { id: 'sec2', type: 'categories', title: 'التصنيفات', subtitle: 'تصفحي حسب الفئة', imageUrl: null, visible: true, sortOrder: 1 },
+    { id: 'sec3', type: 'featured_products', title: 'منتجات مميزة', subtitle: 'اختياراتنا المميزة لكِ', imageUrl: null, visible: true, sortOrder: 2 },
+    { id: 'sec4', type: 'best_sellers', title: 'الأكثر مبيعاً', subtitle: 'المنتجات الأكثر طلباً', imageUrl: null, visible: true, sortOrder: 3 },
+    { id: 'sec5', type: 'new_arrivals', title: 'وصل حديثاً', subtitle: 'أحدث المنتجات المضافة', imageUrl: null, visible: true, sortOrder: 4 },
+    { id: 'sec6', type: 'whatsapp_cta', title: 'اطلبي عبر واتساب', subtitle: 'تواصلي معنا مباشرة للطلب', imageUrl: null, visible: true, sortOrder: 5 },
+    { id: 'sec7', type: 'about', title: 'عن متجرنا', subtitle: 'نتعهد بتقديم أفضل المنتجات', imageUrl: null, visible: true, sortOrder: 6 },
+    { id: 'sec8', type: 'delivery_info', title: 'معلومات التوصيل', subtitle: 'نوصل لجميع المناطق', imageUrl: null, visible: true, sortOrder: 7 },
+  ],
+};
+
+// ============ NEW STORE DEFAULT PAGES ============
+export const NEW_STORE_DEFAULT_PAGES: DemoStorePage[] = [
+  { id: 'nsp1', storeId: 'new', title: 'من نحن', slug: 'about-us', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'nsp2', storeId: 'new', title: 'اتصل بنا', slug: 'contact-us', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'nsp3', storeId: 'new', title: 'الشروط والأحكام', slug: 'terms', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'nsp4', storeId: 'new', title: 'سياسة الخصوصية', slug: 'privacy-policy', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'nsp5', storeId: 'new', title: 'سياسة الاسترجاع والاستبدال', slug: 'return-policy', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'nsp6', storeId: 'new', title: 'سياسة التوصيل', slug: 'delivery-policy', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'nsp7', storeId: 'new', title: 'سياسة الدفع', slug: 'payment-policy', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'nsp8', storeId: 'new', title: 'الأسئلة الشائعة', slug: 'faq', content: '', status: 'draft', showInFooter: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];

@@ -1,0 +1,1126 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback } from 'react';
+     4→import { useApp } from '@/lib/store';
+     5→import {
+     6→  DEMO_ORDERS,
+     7→  formatMRU,
+     8→  WHATSAPP_TEMPLATES,
+     9→} from '@/lib/demo-data';
+    10→import {
+    11→  ORDER_STATUS_LABELS,
+    12→  ORDER_STATUS_COLORS,
+    13→  PAYMENT_STATUS_LABELS,
+    14→  PAYMENT_STATUS_COLORS,
+    15→  CUSTOMER_SOURCE_LABELS,
+    16→} from '@/lib/types';
+    17→import type { DemoOrder, OrderStatus, PaymentStatus } from '@/lib/types';
+    18→
+    19→import { Button } from '@/components/ui/button';
+    20→import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+    21→import { Badge } from '@/components/ui/badge';
+    22→import { Input } from '@/components/ui/input';
+    23→import {
+    24→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    25→} from '@/components/ui/table';
+    26→import {
+    27→  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+    28→} from '@/components/ui/select';
+    29→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+    30→import { Separator } from '@/components/ui/separator';
+    31→import { Textarea } from '@/components/ui/textarea';
+    32→import { ScrollArea } from '@/components/ui/scroll-area';
+    33→import {
+    34→  Kanban,
+    35→  List,
+    36→  Eye,
+    37→  MessageCircle,
+    38→  Phone,
+    39→  Clock,
+    40→  MapPin,
+    41→  Package,
+    42→  DollarSign,
+    43→  User,
+    44→  FileText,
+    45→  ChevronLeft,
+    46→  MoreVertical,
+    47→  Search,
+    48→  Filter,
+    49→  Printer,
+    50→  X,
+    51→  Check,
+    52→  ArrowUpDown,
+    53→  Truck,
+    54→  CreditCard,
+    55→  AlertCircle,
+    56→  Ban,
+    57→  RotateCcw,
+    58→  Send,
+    59→  ExternalLink,
+    60→} from 'lucide-react';
+    61→
+    62→// ============ HELPERS ============
+    63→
+    64→function getTimeSince(dateStr: string): string {
+    65→  const now = new Date();
+    66→  const date = new Date(dateStr);
+    67→  const diffMs = now.getTime() - date.getTime();
+    68→  const diffMin = Math.floor(diffMs / 60000);
+    69→  const diffHour = Math.floor(diffMin / 60);
+    70→  const diffDay = Math.floor(diffHour / 24);
+    71→
+    72→  if (diffMin < 1) return 'الآن';
+    73→  if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
+    74→  if (diffHour < 24) return `منذ ${diffHour} ساعة`;
+    75→  if (diffDay < 7) return `منذ ${diffDay} يوم`;
+    76→  return `منذ ${Math.floor(diffDay / 7)} أسبوع`;
+    77→}
+    78→
+    79→function formatDate(dateStr: string): string {
+    80→  const d = new Date(dateStr);
+    81→  return d.toLocaleDateString('ar-MA', {
+    82→    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    83→  });
+    84→}
+    85→
+    86→const SOURCE_BADGE_COLORS: Record<string, string> = {
+    87→  whatsapp: 'bg-green-100 text-green-800',
+    88→  instagram: 'bg-pink-100 text-pink-800',
+    89→  facebook: 'bg-blue-100 text-blue-800',
+    90→  tiktok: 'bg-gray-100 text-gray-800',
+    91→  snapchat: 'bg-yellow-100 text-yellow-800',
+    92→  direct: 'bg-emerald-100 text-emerald-800',
+    93→  paid_ad: 'bg-orange-100 text-orange-800',
+    94→  friend_referral: 'bg-violet-100 text-violet-800',
+    95→  other: 'bg-slate-100 text-slate-800',
+    96→};
+    97→
+    98→function getSourceColor(source: string): string {
+    99→  return SOURCE_BADGE_COLORS[source] || SOURCE_BADGE_COLORS.other;
+   100→}
+   101→
+   102→const KANBAN_COLUMNS: { key: OrderStatus | 'closed'; label: string; statuses: OrderStatus[]; headerColor: string; headerBg: string }[] = [
+   103→  { key: 'new', label: 'طلب جديد', statuses: ['new'], headerColor: 'text-blue-700', headerBg: 'bg-blue-50 border-blue-200' },
+   104→  { key: 'contacted', label: 'تم التواصل', statuses: ['contacted', 'customer_not_responding'], headerColor: 'text-indigo-700', headerBg: 'bg-indigo-50 border-indigo-200' },
+   105→  { key: 'waiting_payment', label: 'بانتظار الدفع', statuses: ['waiting_payment'], headerColor: 'text-yellow-700', headerBg: 'bg-yellow-50 border-yellow-200' },
+   106→  { key: 'paid', label: 'مدفوع', statuses: ['paid'], headerColor: 'text-green-700', headerBg: 'bg-green-50 border-green-200' },
+   107→  { key: 'preparing', label: 'قيد التحضير', statuses: ['preparing'], headerColor: 'text-orange-700', headerBg: 'bg-orange-50 border-orange-200' },
+   108→  { key: 'ready_delivery', label: 'جاهز للتوصيل', statuses: ['ready_delivery'], headerColor: 'text-cyan-700', headerBg: 'bg-cyan-50 border-cyan-200' },
+   109→  { key: 'on_the_way', label: 'في الطريق', statuses: ['on_the_way'], headerColor: 'text-purple-700', headerBg: 'bg-purple-50 border-purple-200' },
+   110→  { key: 'delivered', label: 'تم التسليم', statuses: ['delivered'], headerColor: 'text-emerald-700', headerBg: 'bg-emerald-50 border-emerald-200' },
+   111→  { key: 'closed', label: 'مُغلق', statuses: ['cancelled', 'returned', 'rejected'], headerColor: 'text-red-700', headerBg: 'bg-red-50 border-red-200' },
+   112→];
+   113→
+   114→const STATUS_FLOW: OrderStatus[] = [
+   115→  'new', 'contacted', 'waiting_payment', 'paid', 'preparing', 'ready_delivery', 'on_the_way', 'delivered',
+   116→];
+   117→
+   118→function getFlowIndex(status: OrderStatus): number {
+   119→  const idx = STATUS_FLOW.indexOf(status);
+   120→  if (status === 'cancelled' || status === 'returned' || status === 'rejected') return -1;
+   121→  if (status === 'customer_not_responding') return -1;
+   122→  return idx;
+   123→}
+   124→
+   125→function generateWhatsAppMessage(order: DemoOrder): string {
+   126→  let templateKey = order.status;
+   127→  if (order.status === 'preparing' || order.status === 'ready_delivery' || order.status === 'paid') {
+   128→    templateKey = 'payment_confirmed';
+   129→  }
+   130→  const template = WHATSAPP_TEMPLATES[templateKey] || WHATSAPP_TEMPLATES.new_order;
+   131→  return template
+   132→    .replace(/{customer_name}/g, order.customerName)
+   133→    .replace(/{store_name}/g, 'بوتيك النخبة')
+   134→    .replace(/{order_number}/g, order.orderNumber)
+   135→    .replace(/{order_total}/g, formatMRU(order.total))
+   136→    .replace(/{payment_status}/g, PAYMENT_STATUS_LABELS[order.paymentStatus])
+   137→    .replace(/{delivery_area}/g, order.customerArea || '')
+   138→    .replace(/{store_whatsapp}/g, '22222333');
+   139→}
+   140→
+   141→const MOCK_TIMELINE: Record<string, { status: string; time: string; note?: string }[]> = {
+   142→  o1: [
+   143→    { status: 'new', time: '2026-07-04T10:30:00', note: 'طلب جديد عبر واتساب' },
+   144→  ],
+   145→  o2: [
+   146→    { status: 'new', time: '2026-07-04T09:15:00', note: 'طلب جديد عبر انستغرام' },
+   147→    { status: 'contacted', time: '2026-07-04T10:00:00', note: 'تم التواصل مع الزبونة - وعدت بالتحويل' },
+   148→  ],
+   149→  o3: [
+   150→    { status: 'new', time: '2026-07-03T14:00:00' },
+   151→    { status: 'contacted', time: '2026-07-03T14:15:00' },
+   152→    { status: 'paid', time: '2026-07-03T15:00:00', note: 'دفع عند التوصيل' },
+   153→  ],
+   154→  o4: [
+   155→    { status: 'new', time: '2026-07-03T11:00:00' },
+   156→    { status: 'contacted', time: '2026-07-03T11:30:00' },
+   157→    { status: 'paid', time: '2026-07-03T12:00:00' },
+   158→    { status: 'preparing', time: '2026-07-03T14:00:00' },
+   159→  ],
+   160→  o5: [
+   161→    { status: 'new', time: '2026-07-02T16:30:00' },
+   162→    { status: 'contacted', time: '2026-07-02T16:45:00' },
+   163→    { status: 'paid', time: '2026-07-02T17:00:00' },
+   164→    { status: 'preparing', time: '2026-07-03T09:00:00' },
+   165→    { status: 'ready_delivery', time: '2026-07-03T14:00:00' },
+   166→  ],
+   167→  o6: [
+   168→    { status: 'new', time: '2026-07-02T10:00:00' },
+   169→    { status: 'contacted', time: '2026-07-02T10:20:00' },
+   170→    { status: 'paid', time: '2026-07-02T11:00:00' },
+   171→    { status: 'preparing', time: '2026-07-02T14:00:00' },
+   172→    { status: 'ready_delivery', time: '2026-07-03T08:00:00' },
+   173→    { status: 'on_the_way', time: '2026-07-03T10:00:00' },
+   174→  ],
+   175→  o7: [
+   176→    { status: 'new', time: '2026-06-30T09:00:00' },
+   177→    { status: 'contacted', time: '2026-06-30T09:20:00' },
+   178→    { status: 'paid', time: '2026-06-30T10:00:00' },
+   179→    { status: 'preparing', time: '2026-06-30T12:00:00' },
+   180→    { status: 'ready_delivery', time: '2026-06-30T16:00:00' },
+   181→    { status: 'on_the_way', time: '2026-07-01T08:00:00' },
+   182→    { status: 'delivered', time: '2026-07-01T11:00:00', note: 'تم التسليم بنجاح' },
+   183→  ],
+   184→  o8: [
+   185→    { status: 'new', time: '2026-07-01T13:00:00' },
+   186→    { status: 'customer_not_responding', time: '2026-07-02T10:00:00', note: 'لا يرد على الهاتف' },
+   187→  ],
+   188→  o9: [
+   189→    { status: 'new', time: '2026-06-28T15:00:00' },
+   190→    { status: 'contacted', time: '2026-06-28T15:30:00' },
+   191→    { status: 'cancelled', time: '2026-06-29T10:00:00', note: 'ألغت الزبونة الطلب' },
+   192→  ],
+   193→  o10: [
+   194→    { status: 'new', time: '2026-07-04T11:00:00' },
+   195→    { status: 'contacted', time: '2026-07-04T11:30:00' },
+   196→    { status: 'waiting_payment', time: '2026-07-04T12:00:00' },
+   197→  ],
+   198→};
+   199→
+   200→type SortField = 'orderNumber' | 'customerName' | 'total' | 'status' | 'paymentStatus' | 'createdAt';
+   201→type SortDir = 'asc' | 'desc';
+   202→
+   203→// ============ MAIN COMPONENT ============
+   204→
+   205→export default function OrdersModule() {
+   206→  const { setView, currentView, viewParams, goBack } = useApp();
+   207→
+   208→  // State
+   209→  const [searchQuery, setSearchQuery] = useState('');
+   210→  const [statusFilter, setStatusFilter] = useState<string>('all');
+   211→  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+   212→  const [sortField, setSortField] = useState<SortField>('createdAt');
+   213→  const [sortDir, setSortDir] = useState<SortDir>('desc');
+   214→  const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
+   215→  const [selectedStatus, setSelectedStatus] = useState<Record<string, OrderStatus>>({});
+   216→  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<Record<string, PaymentStatus>>({});
+   217→
+   218→  // Filter orders (always called before conditional return)
+   219→  const filteredOrders = useMemo(() => {
+   220→    let orders = [...DEMO_ORDERS];
+   221→
+   222→    if (searchQuery.trim()) {
+   223→      const q = searchQuery.trim().toLowerCase();
+   224→      orders = orders.filter(o =>
+   225→        o.orderNumber.toLowerCase().includes(q) ||
+   226→        o.customerName.toLowerCase().includes(q) ||
+   227→        o.customerPhone.includes(q) ||
+   228→        (o.customerArea || '').toLowerCase().includes(q),
+   229→      );
+   230→    }
+   231→
+   232→    if (statusFilter !== 'all') {
+   233→      if (statusFilter === 'closed') {
+   234→        orders = orders.filter(o => o.status === 'cancelled' || o.status === 'returned' || o.status === 'rejected');
+   235→      } else {
+   236→        orders = orders.filter(o => o.status === statusFilter);
+   237→      }
+   238→    }
+   239→
+   240→    // Sort
+   241→    orders.sort((a, b) => {
+   242→      let cmp = 0;
+   243→      switch (sortField) {
+   244→        case 'orderNumber':
+   245→          cmp = a.orderNumber.localeCompare(b.orderNumber);
+   246→          break;
+   247→        case 'customerName':
+   248→          cmp = a.customerName.localeCompare(b.customerName, 'ar');
+   249→          break;
+   250→        case 'total':
+   251→          cmp = a.total - b.total;
+   252→          break;
+   253→        case 'status':
+   254→          cmp = a.status.localeCompare(b.status);
+   255→          break;
+   256→        case 'paymentStatus':
+   257→          cmp = a.paymentStatus.localeCompare(b.paymentStatus);
+   258→          break;
+   259→        case 'createdAt':
+   260→        default:
+   261→          cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+   262→          break;
+   263→      }
+   264→      return sortDir === 'asc' ? cmp : -cmp;
+   265→    });
+   266→
+   267→    return orders;
+   268→  }, [searchQuery, statusFilter, sortField, sortDir]);
+   269→
+   270→  const handleSort = useCallback((field: SortField) => {
+   271→    if (sortField === field) {
+   272→      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+   273→    } else {
+   274→      setSortField(field);
+   275→      setSortDir('asc');
+   276→    }
+   277→  }, [sortField]);
+   278→
+   279→  const openOrder = useCallback((orderId: string) => {
+   280→    setView('order-details', { orderId });
+   281→  }, [setView]);
+   282→
+   283→  const SortIcon = ({ field }: { field: SortField }) => (
+   284→    <ArrowUpDown className={`inline-block h-3.5 w-3.5 mr-1 ${sortField === field ? 'text-[#0F7A4F]' : 'text-gray-400'}`} />
+   285→  );
+   286→
+   287→  // If we're in order-details view (after all hooks)
+   288→  if (currentView === 'order-details') {
+   289→    return <OrderDetails />;
+   290→  }
+   291→
+   292→  // ============ KANBAN VIEW ============
+   293→  const renderKanban = () => (
+   294→    <ScrollArea className="w-full" dir="rtl">
+   295→      <div className="flex gap-4 pb-4 min-w-max px-1">
+   296→        {KANBAN_COLUMNS.map(col => {
+   297→          const colOrders = filteredOrders.filter(o => col.statuses.includes(o.status));
+   298→          return (
+   299→            <div key={col.key} className="min-w-[280px] w-[280px] flex-shrink-0">
+   300→              {/* Column Header */}
+   301→              <div className={`rounded-t-xl border border-b-0 px-4 py-3 ${col.headerBg}`}>
+   302→                <div className="flex items-center justify-between">
+   303→                  <h3 className={`font-bold text-sm ${col.headerColor}`}>{col.label}</h3>
+   304→                  <Badge variant="secondary" className="text-xs font-semibold bg-white/70">
+   305→                    {colOrders.length}
+   306→                  </Badge>
+   307→                </div>
+   308→              </div>
+   309→
+   310→              {/* Column Body */}
+   311→              <div className="border border-t-0 rounded-b-xl bg-gray-50/50 min-h-[200px] max-h-[calc(100vh-320px)] overflow-y-auto p-2 space-y-2">
+   312→                {colOrders.length === 0 && (
+   313→                  <div className="flex items-center justify-center h-24 text-gray-400 text-xs">
+   314→                    لا توجد طلبات
+   315→                  </div>
+   316→                )}
+   317→                {colOrders.map(order => (
+   318→                  <Card
+   319→                    key={order.id}
+   320→                    className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-[#0F7A4F]/30 border-gray-200 bg-white"
+   321→                    onClick={() => openOrder(order.id)}
+   322→                  >
+   323→                    <CardContent className="p-3 space-y-2.5">
+   324→                      {/* Order Number + Source */}
+   325→                      <div className="flex items-center justify-between">
+   326→                        <span className="font-bold text-sm text-gray-800">{order.orderNumber}</span>
+   327→                        <Badge className={`text-[10px] px-1.5 py-0 ${getSourceColor(order.source)}`}>
+   328→                          {CUSTOMER_SOURCE_LABELS[order.source] || order.source}
+   329→                        </Badge>
+   330→                      </div>
+   331→
+   332→                      {/* Customer Name */}
+   333→                      <div className="flex items-center gap-1.5 text-gray-700">
+   334→                        <User className="h-3.5 w-3.5 text-gray-400" />
+   335→                        <span className="text-sm font-medium truncate">{order.customerName}</span>
+   336→                      </div>
+   337→
+   338→                      {/* Items + Total */}
+   339→                      <div className="flex items-center justify-between">
+   340→                        <div className="flex items-center gap-1 text-gray-500">
+   341→                          <Package className="h-3.5 w-3.5" />
+   342→                          <span className="text-xs">{order.items.length} منتج</span>
+   343→                        </div>
+   344→                        <span className="font-bold text-sm" style={{ color: '#0F7A4F' }}>
+   345→                          {formatMRU(order.total)}
+   346→                        </span>
+   347→                      </div>
+   348→
+   349→                      {/* Payment Status */}
+   350→                      {order.paymentStatus !== 'paid' && (
+   351→                        <Badge className={`text-[10px] w-full justify-center ${PAYMENT_STATUS_COLORS[order.paymentStatus]}`}>
+   352→                          <CreditCard className="h-3 w-3 ml-1" />
+   353→                          {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+   354→                        </Badge>
+   355→                      )}
+   356→
+   357→                      {/* Time */}
+   358→                      <div className="flex items-center gap-1 text-gray-400">
+   359→                        <Clock className="h-3 w-3" />
+   360→                        <span className="text-[11px]">{getTimeSince(order.createdAt)}</span>
+   361→                      </div>
+   362→                    </CardContent>
+   363→                  </Card>
+   364→                ))}
+   365→              </div>
+   366→            </div>
+   367→          );
+   368→        })}
+   369→      </div>
+   370→    </ScrollArea>
+   371→  );
+   372→
+   373→  // ============ TABLE VIEW ============
+   374→  const renderTable = () => (
+   375→    <div className="overflow-x-auto">
+   376→      <Table dir="rtl">
+   377→        <TableHeader>
+   378→          <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+   379→            <TableHead className="cursor-pointer select-none" onClick={() => handleSort('orderNumber')}>
+   380→              <SortIcon field="orderNumber" />رقم الطلب
+   381→            </TableHead>
+   382→            <TableHead className="cursor-pointer select-none" onClick={() => handleSort('customerName')}>
+   383→              <SortIcon field="customerName" />الزبون
+   384→            </TableHead>
+   385→            <TableHead>الهاتف</TableHead>
+   386→            <TableHead>المنطقة</TableHead>
+   387→            <TableHead className="cursor-pointer select-none" onClick={() => handleSort('total')}>
+   388→              <SortIcon field="total" />المبلغ
+   389→            </TableHead>
+   390→            <TableHead className="cursor-pointer select-none" onClick={() => handleSort('status')}>
+   391→              <SortIcon field="status" />حالة الطلب
+   392→            </TableHead>
+   393→            <TableHead>حالة الدفع</TableHead>
+   394→            <TableHead>المصدر</TableHead>
+   395→            <TableHead className="cursor-pointer select-none" onClick={() => handleSort('createdAt')}>
+   396→              <SortIcon field="createdAt" />التاريخ
+   397→            </TableHead>
+   398→            <TableHead className="text-center">إجراءات</TableHead>
+   399→          </TableRow>
+   400→        </TableHeader>
+   401→        <TableBody>
+   402→          {filteredOrders.length === 0 && (
+   403→            <TableRow>
+   404→              <TableCell colSpan={10} className="text-center py-12 text-gray-400">
+   405→                <Package className="h-10 w-10 mx-auto mb-2 opacity-40" />
+   406→                <p>لا توجد طلبات مطابقة</p>
+   407→              </TableCell>
+   408→            </TableRow>
+   409→          )}
+   410→          {filteredOrders.map(order => (
+   411→            <TableRow
+   412→              key={order.id}
+   413→              className="cursor-pointer hover:bg-[#0F7A4F]/5 transition-colors"
+   414→              onClick={() => openOrder(order.id)}
+   415→            >
+   416→              <TableCell className="font-bold text-sm">{order.orderNumber}</TableCell>
+   417→              <TableCell className="font-medium">{order.customerName}</TableCell>
+   418→              <TableCell className="text-gray-600 font-mono text-sm" dir="ltr">{order.customerPhone}</TableCell>
+   419→              <TableCell className="text-gray-600">{order.customerArea || '—'}</TableCell>
+   420→              <TableCell className="font-bold" style={{ color: '#0F7A4F' }}>
+   421→                {formatMRU(order.total)}
+   422→              </TableCell>
+   423→              <TableCell>
+   424→                <Badge className={`${ORDER_STATUS_COLORS[order.status]} text-[11px]`}>
+   425→                  {ORDER_STATUS_LABELS[order.status]}
+   426→                </Badge>
+   427→              </TableCell>
+   428→              <TableCell>
+   429→                <Badge className={`${PAYMENT_STATUS_COLORS[order.paymentStatus]} text-[11px]`}>
+   430→                  {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+   431→                </Badge>
+   432→              </TableCell>
+   433→              <TableCell>
+   434→                <Badge className={`text-[11px] ${getSourceColor(order.source)}`}>
+   435→                  {CUSTOMER_SOURCE_LABELS[order.source] || order.source}
+   436→                </Badge>
+   437→              </TableCell>
+   438→              <TableCell className="text-gray-500 text-xs">{formatDate(order.createdAt)}</TableCell>
+   439→              <TableCell className="text-center" onClick={e => e.stopPropagation()}>
+   440→                <Button
+   441→                  variant="ghost"
+   442→                  size="icon"
+   443→                  className="h-8 w-8 hover:bg-[#0F7A4F]/10 hover:text-[#0F7A4F]"
+   444→                  onClick={() => openOrder(order.id)}
+   445→                >
+   446→                  <Eye className="h-4 w-4" />
+   447→                </Button>
+   448→              </TableCell>
+   449→            </TableRow>
+   450→          ))}
+   451→        </TableBody>
+   452→      </Table>
+   453→    </div>
+   454→  );
+   455→
+   456→  // ============ MAIN RETURN ============
+   457→  return (
+   458→    <div className="space-y-4" style={{ background: '#FAFAF7', minHeight: '100%' }}>
+   459→      {/* Header */}
+   460→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   461→        <div className="flex items-center gap-3">
+   462→          <div
+   463→            className="w-10 h-10 rounded-xl flex items-center justify-center"
+   464→            style={{ background: '#0F7A4F' }}
+   465→          >
+   466→            <Package className="h-5 w-5 text-white" />
+   467→          </div>
+   468→          <h1 className="text-2xl font-bold text-gray-900">الطلبات</h1>
+   469→          <Badge className="bg-[#0F7A4F] text-white">{DEMO_ORDERS.length}</Badge>
+   470→        </div>
+   471→
+   472→        {/* Search + Filter */}
+   473→        <div className="flex items-center gap-2 flex-1 sm:max-w-md">
+   474→          <div className="relative flex-1">
+   475→            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   476→            <Input
+   477→              placeholder="بحث برقم الطلب أو اسم الزبون..."
+   478→              value={searchQuery}
+   479→              onChange={e => setSearchQuery(e.target.value)}
+   480→              className="pr-9 bg-white border-gray-200 focus:border-[#0F7A4F]"
+   481→            />
+   482→            {searchQuery && (
+   483→              <button
+   484→                onClick={() => setSearchQuery('')}
+   485→                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+   486→              >
+   487→                <X className="h-3.5 w-3.5" />
+   488→              </button>
+   489→            )}
+   490→          </div>
+   491→          <Select value={statusFilter} onValueChange={setStatusFilter}>
+   492→            <SelectTrigger className="w-[160px] bg-white border-gray-200">
+   493→              <Filter className="h-4 w-4 ml-1 text-gray-400" />
+   494→              <SelectValue placeholder="كل الحالات" />
+   495→            </SelectTrigger>
+   496→            <SelectContent>
+   497→              <SelectItem value="all">كل الحالات</SelectItem>
+   498→              {KANBAN_COLUMNS.map(col => (
+   499→                <SelectItem key={col.key} value={col.key}>
+   500→                  {col.label}
+   501→                </SelectItem>
+   502→              ))}
+   503→            </SelectContent>
+   504→          </Select>
+   505→        </div>
+   506→      </div>
+   507→
+   508→      {/* View Toggles */}
+   509→      <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1 w-fit">
+   510→        <button
+   511→          onClick={() => setViewMode('kanban')}
+   512→          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+   513→            viewMode === 'kanban'
+   514→              ? 'bg-[#0F7A4F] text-white shadow-sm'
+   515→              : 'text-gray-600 hover:bg-gray-100'
+   516→          }`}
+   517→        >
+   518→          <Kanban className="h-4 w-4" />
+   519→          لوحة كانبان
+   520→        </button>
+   521→        <button
+   522→          onClick={() => setViewMode('table')}
+   523→          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+   524→            viewMode === 'table'
+   525→              ? 'bg-[#0F7A4F] text-white shadow-sm'
+   526→              : 'text-gray-600 hover:bg-gray-100'
+   527→          }`}
+   528→        >
+   529→          <List className="h-4 w-4" />
+   530→          جدول
+   531→        </button>
+   532→      </div>
+   533→
+   534→      {/* Content */}
+   535→      {viewMode === 'kanban' ? renderKanban() : renderTable()}
+   536→    </div>
+   537→  );
+   538→}
+   539→
+   540→// ============ ORDER DETAILS ============
+   541→
+   542→function OrderDetails() {
+   543→  const { viewParams, goBack, setView } = useApp();
+   544→  const orderId = viewParams.orderId || '';
+   545→  const order = DEMO_ORDERS.find(o => o.id === orderId);
+   546→
+   547→  const [newStatus, setNewStatus] = useState<string>('');
+   548→  const [newPaymentStatus, setNewPaymentStatus] = useState<string>('');
+   549→  const [internalNotes, setInternalNotes] = useState(order?.internalNotes || '');
+   550→  const [copied, setCopied] = useState(false);
+   551→
+   552→  if (!order) {
+   553→    return (
+   554→      <div className="flex flex-col items-center justify-center py-24 text-gray-400" style={{ background: '#FAFAF7', minHeight: '100%' }}>
+   555→        <AlertCircle className="h-12 w-12 mb-4 opacity-40" />
+   556→        <p className="text-lg font-medium">الطلب غير موجود</p>
+   557→        <Button variant="outline" className="mt-4" onClick={() => goBack()}>
+   558→          <ChevronLeft className="h-4 w-4 ml-1" />
+   559→          العودة للطلبات
+   560→        </Button>
+   561→      </div>
+   562→    );
+   563→  }
+   564→
+   565→  const currentStatusIndex = getFlowIndex(order.status);
+   566→  const timeline = MOCK_TIMELINE[order.id] || [
+   567→    { status: order.status, time: order.createdAt },
+   568→  ];
+   569→  const whatsappMsg = generateWhatsAppMessage(order);
+   570→
+   571→  const handleCopyMessage = () => {
+   572→    navigator.clipboard.writeText(whatsappMsg);
+   573→    setCopied(true);
+   574→    setTimeout(() => setCopied(false), 2000);
+   575→  };
+   576→
+   577→  const handleWhatsAppSend = () => {
+   578→    const encoded = encodeURIComponent(whatsappMsg);
+   579→    window.open(`https://wa.me/${order.customerPhone}?text=${encoded}`, '_blank');
+   580→  };
+   581→
+   582→  const handlePrint = () => {
+   583→    window.print();
+   584→  };
+   585→
+   586→  const handleSaveNotes = () => {
+   587→    // In a real app, this would call an API
+   588→  };
+   589→
+   590→  const handleUpdateStatus = () => {
+   591→    if (newStatus) {
+   592→      // In a real app, this would call an API
+   593→    }
+   594→  };
+   595→
+   596→  const handleUpdatePaymentStatus = () => {
+   597→    if (newPaymentStatus) {
+   598→      // In a real app, this would call an API
+   599→    }
+   600→  };
+   601→
+   602→  const allStatusOptions: OrderStatus[] = [
+   603→    'new', 'contacted', 'waiting_payment', 'paid', 'preparing',
+   604→    'ready_delivery', 'on_the_way', 'delivered', 'cancelled',
+   605→    'returned', 'rejected', 'customer_not_responding',
+   606→  ];
+   607→
+   608→  const allPaymentOptions: PaymentStatus[] = [
+   609→    'unpaid', 'waiting_confirmation', 'paid', 'rejected', 'refunded',
+   610→  ];
+   611→
+   612→  return (
+   613→    <div className="space-y-5" style={{ background: '#FAFAF7', minHeight: '100%' }}>
+   614→      {/* Top Bar */}
+   615→      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   616→        <div className="flex items-center gap-3">
+   617→          <Button
+   618→            variant="outline"
+   619→            size="sm"
+   620→            className="border-gray-200 hover:bg-[#0F7A4F]/5 hover:text-[#0F7A4F] hover:border-[#0F7A4F]/30"
+   621→            onClick={goBack}
+   622→          >
+   623→            <ChevronLeft className="h-4 w-4 ml-1" />
+   624→            العودة
+   625→          </Button>
+   626→          <div>
+   627→            <h1 className="text-xl font-bold text-gray-900">{order.orderNumber}</h1>
+   628→            <p className="text-xs text-gray-500 mt-0.5">{formatDate(order.createdAt)}</p>
+   629→          </div>
+   630→        </div>
+   631→        <div className="flex items-center gap-2">
+   632→          <Button variant="outline" size="sm" className="border-gray-200" onClick={handlePrint}>
+   633→            <Printer className="h-4 w-4 ml-1" />
+   634→            طباعة
+   635→          </Button>
+   636→          <a
+   637→            href={`https://wa.me/${order.customerPhone}`}
+   638→            target="_blank"
+   639→            rel="noopener noreferrer"
+   640→          >
+   641→            <Button size="sm" className="bg-[#0F7A4F] hover:bg-[#0F7A4F]/90 text-white">
+   642→              <MessageCircle className="h-4 w-4 ml-1" />
+   643→              واتساب
+   644→            </Button>
+   645→          </a>
+   646→        </div>
+   647→      </div>
+   648→
+   649→      {/* Status Timeline */}
+   650→      <Card className="border-gray-200 overflow-hidden">
+   651→        <CardContent className="p-0">
+   652→          <div className="overflow-x-auto">
+   653→            <div className="flex items-center min-w-max px-4 py-4 gap-0" dir="rtl">
+   654→              {STATUS_FLOW.map((step, idx) => {
+   655→                const isCompleted = idx <= currentStatusIndex;
+   656→                const isCurrent = idx === currentStatusIndex;
+   657→                const isAfter = idx > currentStatusIndex;
+   658→
+   659→                return (
+   660→                  <div key={step} className="flex items-center">
+   661→                    <div className="flex flex-col items-center gap-1.5 w-20">
+   662→                      <div
+   663→                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+   664→                          isCompleted
+   665→                            ? 'bg-[#0F7A4F] text-white shadow-sm'
+   666→                            : 'bg-gray-200 text-gray-400'
+   667→                        } ${isCurrent ? 'ring-4 ring-[#0F7A4F]/20 scale-110' : ''}`}
+   668→                      >
+   669→                        {isCompleted ? <Check className="h-4 w-4" /> : idx + 1}
+   670→                      </div>
+   671→                      <span
+   672→                        className={`text-[10px] text-center leading-tight font-medium ${
+   673→                          isCompleted ? 'text-[#0F7A4F]' : 'text-gray-400'
+   674→                        }`}
+   675→                      >
+   676→                        {ORDER_STATUS_LABELS[step]}
+   677→                      </span>
+   678→                    </div>
+   679→                    {idx < STATUS_FLOW.length - 1 && (
+   680→                      <div
+   681→                        className={`w-12 h-0.5 mx-1 ${
+   682→                          idx < currentStatusIndex ? 'bg-[#0F7A4F]' : 'bg-gray-200'
+   683→                        }`}
+   684→                      />
+   685→                    )}
+   686→                  </div>
+   687→                );
+   688→              })}
+   689→              {/* Closed indicator */}
+   690→              {(order.status === 'cancelled' || order.status === 'returned' || order.status === 'rejected') && (
+   691→                <>
+   692→                  <div className="w-12 h-0.5 mx-1 bg-gray-200" />
+   693→                  <div className="flex flex-col items-center gap-1.5 w-20">
+   694→                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-500 text-white shadow-sm">
+   695→                      <Ban className="h-4 w-4" />
+   696→                    </div>
+   697→                    <span className="text-[10px] text-center leading-tight font-medium text-red-600">
+   698→                      {ORDER_STATUS_LABELS[order.status]}
+   699→                    </span>
+   700→                  </div>
+   701→                </>
+   702→              )}
+   703→            </div>
+   704→          </div>
+   705→        </CardContent>
+   706→      </Card>
+   707→
+   708→      {/* Two Column Layout */}
+   709→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+   710→        {/* Right Column (wider) */}
+   711→        <div className="lg:col-span-2 space-y-5">
+   712→          {/* Order Items */}
+   713→          <Card className="border-gray-200">
+   714→            <CardHeader className="pb-3">
+   715→              <CardTitle className="text-base flex items-center gap-2">
+   716→                <Package className="h-5 w-5 text-[#0F7A4F]" />
+   717→                عناصر الطلب
+   718→              </CardTitle>
+   719→            </CardHeader>
+   720→            <CardContent>
+   721→              <div className="space-y-3">
+   722→                {order.items.map(item => (
+   723→                  <div
+   724→                    key={item.id}
+   725→                    className="flex items-center justify-between p-3 bg-gray-50/80 rounded-lg"
+   726→                  >
+   727→                    <div className="flex-1 min-w-0">
+   728→                      <p className="font-medium text-gray-900 text-sm">{item.productName}</p>
+   729→                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+   730→                        {item.size && (
+   731→                          <Badge variant="secondary" className="text-[10px]">
+   732→                            {item.size}
+   733→                          </Badge>
+   734→                        )}
+   735→                        {item.color && (
+   736→                          <Badge variant="outline" className="text-[10px] border-gray-300">
+   737→                            {item.color}
+   738→                          </Badge>
+   739→                        )}
+   740→                        <span className="text-xs text-gray-500">
+   741→                          {formatMRU(item.productPrice)} × {item.quantity}
+   742→                        </span>
+   743→                      </div>
+   744→                    </div>
+   745→                    <span className="font-bold text-sm mr-4" style={{ color: '#0F7A4F' }}>
+   746→                      {formatMRU(item.total)}
+   747→                    </span>
+   748→                  </div>
+   749→                ))}
+   750→              </div>
+   751→
+   752→              <Separator className="my-3" />
+   753→
+   754→              <div className="space-y-1.5 text-sm">
+   755→                <div className="flex justify-between text-gray-500">
+   756→                  <span>المجموع الفرعي</span>
+   757→                  <span>{formatMRU(order.subtotal)}</span>
+   758→                </div>
+   759→                <div className="flex justify-between text-gray-500">
+   760→                  <span>
+   761→                    {order.deliveryMethod === 'delivery' ? 'رسوم التوصيل' : 'استلام من المتجر'}
+   762→                  </span>
+   763→                  <span>{order.deliveryFee > 0 ? formatMRU(order.deliveryFee) : 'مجاني'}</span>
+   764→                </div>
+   765→                <Separator />
+   766→                <div className="flex justify-between font-bold text-base">
+   767→                  <span>الإجمالي</span>
+   768→                  <span style={{ color: '#0F7A4F' }}>{formatMRU(order.total)}</span>
+   769→                </div>
+   770→              </div>
+   771→            </CardContent>
+   772→          </Card>
+   773→
+   774→          {/* Customer Info */}
+   775→          <Card className="border-gray-200">
+   776→            <CardHeader className="pb-3">
+   777→              <CardTitle className="text-base flex items-center gap-2">
+   778→                <User className="h-5 w-5 text-[#0F7A4F]" />
+   779→                معلومات الزبون
+   780→              </CardTitle>
+   781→            </CardHeader>
+   782→            <CardContent>
+   783→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   784→                <div className="space-y-3">
+   785→                  <div className="flex items-center gap-2">
+   786→                    <User className="h-4 w-4 text-gray-400" />
+   787→                    <div>
+   788→                      <p className="text-xs text-gray-500">الاسم</p>
+   789→                      <p className="font-medium text-sm">{order.customerName}</p>
+   790→                    </div>
+   791→                  </div>
+   792→                  <div className="flex items-center gap-2">
+   793→                    <Phone className="h-4 w-4 text-gray-400" />
+   794→                    <div>
+   795→                      <p className="text-xs text-gray-500">الهاتف</p>
+   796→                      <div className="flex items-center gap-2">
+   797→                        <p className="font-medium text-sm font-mono" dir="ltr">{order.customerPhone}</p>
+   798→                        <a href={`tel:${order.customerPhone}`}>
+   799→                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-green-50 hover:text-green-600">
+   800→                            <Phone className="h-3.5 w-3.5" />
+   801→                          </Button>
+   802→                        </a>
+   803→                        <a href={`https://wa.me/${order.customerPhone}`} target="_blank" rel="noopener noreferrer">
+   804→                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-green-50 hover:text-green-600">
+   805→                            <MessageCircle className="h-3.5 w-3.5" />
+   806→                          </Button>
+   807→                        </a>
+   808→                      </div>
+   809→                    </div>
+   810→                  </div>
+   811→                </div>
+   812→                <div className="space-y-3">
+   813→                  <div className="flex items-center gap-2">
+   814→                    <MapPin className="h-4 w-4 text-gray-400" />
+   815→                    <div>
+   816→                      <p className="text-xs text-gray-500">المدينة</p>
+   817→                      <p className="font-medium text-sm">{order.customerCity}</p>
+   818→                    </div>
+   819→                  </div>
+   820→                  <div className="flex items-center gap-2">
+   821→                    <MapPin className="h-4 w-4 text-gray-400" />
+   822→                    <div>
+   823→                      <p className="text-xs text-gray-500">المنطقة</p>
+   824→                      <p className="font-medium text-sm">{order.customerArea || '—'}</p>
+   825→                    </div>
+   826→                  </div>
+   827→                  <div className="flex items-center gap-2">
+   828→                    <Truck className="h-4 w-4 text-gray-400" />
+   829→                    <div>
+   830→                      <p className="text-xs text-gray-500">طريقة التوصيل</p>
+   831→                      <p className="font-medium text-sm">
+   832→                        {order.deliveryMethod === 'delivery' ? 'توصيل للمنزل' : 'استلام من المتجر'}
+   833→                      </p>
+   834→                    </div>
+   835→                  </div>
+   836→                </div>
+   837→              </div>
+   838→
+   839→              {order.orderNotes && (
+   840→                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+   841→                  <p className="text-xs text-amber-700 font-medium mb-1 flex items-center gap-1">
+   842→                    <FileText className="h-3.5 w-3.5" />
+   843→                    ملاحظات الزبون
+   844→                  </p>
+   845→                  <p className="text-sm text-amber-800">{order.orderNotes}</p>
+   846→                </div>
+   847→              )}
+   848→            </CardContent>
+   849→          </Card>
+   850→
+   851→          {/* Delivery Info */}
+   852→          <Card className="border-gray-200">
+   853→            <CardHeader className="pb-3">
+   854→              <CardTitle className="text-base flex items-center gap-2">
+   855→                <Truck className="h-5 w-5 text-[#0F7A4F]" />
+   856→                معلومات التوصيل
+   857→              </CardTitle>
+   858→            </CardHeader>
+   859→            <CardContent>
+   860→              {order.deliveryMethod === 'delivery' ? (
+   861→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   862→                  <div>
+   863→                    <p className="text-xs text-gray-500 mb-1">منطقة التوصيل</p>
+   864→                    <p className="font-medium text-sm">{order.customerArea}</p>
+   865→                  </div>
+   866→                  <div>
+   867→                    <p className="text-xs text-gray-500 mb-1">رسوم التوصيل</p>
+   868→                    <p className="font-medium text-sm" style={{ color: '#0F7A4F' }}>
+   869→                      {formatMRU(order.deliveryFee)}
+   870→                    </p>
+   871→                  </div>
+   872→                  <div>
+   873→                    <p className="text-xs text-gray-500 mb-1">طريقة الدفع</p>
+   874→                    <p className="font-medium text-sm">
+   875→                      {order.paymentMethod === 'cash' ? 'الدفع عند التوصيل' : 'تحويل يدوي'}
+   876→                    </p>
+   877→                  </div>
+   878→                </div>
+   879→              ) : (
+   880→                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+   881→                  <MapPin className="h-4 w-4 text-blue-600" />
+   882→                  <p className="text-sm text-blue-700">استلام من المتجر — لا توجد رسوم توصيل</p>
+   883→                </div>
+   884→              )}
+   885→            </CardContent>
+   886→          </Card>
+   887→
+   888→          {/* Internal Notes */}
+   889→          <Card className="border-gray-200">
+   890→            <CardHeader className="pb-3">
+   891→              <CardTitle className="text-base flex items-center gap-2">
+   892→                <FileText className="h-5 w-5 text-[#0F7A4F]" />
+   893→                ملاحظات داخلية
+   894→              </CardTitle>
+   895→              <CardDescription>ملاحظات خاصة لا تظهر للزبون</CardDescription>
+   896→            </CardHeader>
+   897→            <CardContent>
+   898→              <Textarea
+   899→                placeholder="أضف ملاحظات داخلية حول هذا الطلب..."
+   900→                value={internalNotes}
+   901→                onChange={e => setInternalNotes(e.target.value)}
+   902→                className="min-h-[80px] border-gray-200 focus:border-[#0F7A4F] resize-none"
+   903→              />
+   904→              <Button
+   905→                size="sm"
+   906→                className="mt-2 bg-[#0F7A4F] hover:bg-[#0F7A4F]/90 text-white"
+   907→                onClick={handleSaveNotes}
+   908→              >
+   909→                <Check className="h-4 w-4 ml-1" />
+   910→                حفظ الملاحظات
+   911→              </Button>
+   912→            </CardContent>
+   913→          </Card>
+   914→        </div>
+   915→
+   916→        {/* Left Column */}
+   917→        <div className="space-y-5">
+   918→          {/* Status Card */}
+   919→          <Card className="border-gray-200">
+   920→            <CardHeader className="pb-3">
+   921→              <CardTitle className="text-base flex items-center gap-2">
+   922→                <Clock className="h-5 w-5 text-[#0F7A4F]" />
+   923→                حالة الطلب
+   924→              </CardTitle>
+   925→            </CardHeader>
+   926→            <CardContent className="space-y-3">
+   927→              <Badge className={`${ORDER_STATUS_COLORS[order.status]} text-sm px-3 py-1.5 font-semibold`}>
+   928→                {ORDER_STATUS_LABELS[order.status]}
+   929→              </Badge>
+   930→
+   931→              <Select value={newStatus} onValueChange={setNewStatus}>
+   932→                <SelectTrigger className="border-gray-200">
+   933→                  <SelectValue placeholder="تغيير الحالة..." />
+   934→                </SelectTrigger>
+   935→                <SelectContent>
+   936→                  {allStatusOptions.map(s => (
+   937→                    <SelectItem key={s} value={s}>
+   938→                      {ORDER_STATUS_LABELS[s]}
+   939→                    </SelectItem>
+   940→                  ))}
+   941→                </SelectContent>
+   942→              </Select>
+   943→
+   944→              <Button
+   945→                size="sm"
+   946→                className="w-full bg-[#0F7A4F] hover:bg-[#0F7A4F]/90 text-white"
+   947→                onClick={handleUpdateStatus}
+   948→                disabled={!newStatus}
+   949→              >
+   950→                تحديث الحالة
+   951→              </Button>
+   952→            </CardContent>
+   953→          </Card>
+   954→
+   955→          {/* Payment Status Card */}
+   956→          <Card className="border-gray-200">
+   957→            <CardHeader className="pb-3">
+   958→              <CardTitle className="text-base flex items-center gap-2">
+   959→                <DollarSign className="h-5 w-5 text-[#D6A84F]" />
+   960→                حالة الدفع
+   961→              </CardTitle>
+   962→            </CardHeader>
+   963→            <CardContent className="space-y-3">
+   964→              <Badge className={`${PAYMENT_STATUS_COLORS[order.paymentStatus]} text-sm px-3 py-1.5 font-semibold`}>
+   965→                {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+   966→              </Badge>
+   967→
+   968→              <Select value={newPaymentStatus} onValueChange={setNewPaymentStatus}>
+   969→                <SelectTrigger className="border-gray-200">
+   970→                  <SelectValue placeholder="تغيير حالة الدفع..." />
+   971→                </SelectTrigger>
+   972→                <SelectContent>
+   973→                  {allPaymentOptions.map(s => (
+   974→                    <SelectItem key={s} value={s}>
+   975→                      {PAYMENT_STATUS_LABELS[s]}
+   976→                    </SelectItem>
+   977→                  ))}
+   978→                </SelectContent>
+   979→              </Select>
+   980→
+   981→              <Button
+   982→                size="sm"
+   983→                className="w-full hover:bg-[#D6A84F]/90 text-white"
+   984→                style={{ background: '#D6A84F' }}
+   985→                onClick={handleUpdatePaymentStatus}
+   986→                disabled={!newPaymentStatus}
+   987→              >
+   988→                تحديث حالة الدفع
+   989→              </Button>
+   990→            </CardContent>
+   991→          </Card>
+   992→
+   993→          {/* Payment Proof Card */}
+   994→          {order.paymentMethod === 'manual_transfer' && (
+   995→            <Card className="border-gray-200">
+   996→              <CardHeader className="pb-3">
+   997→                <CardTitle className="text-base flex items-center gap-2">
+   998→                  <CreditCard className="h-5 w-5 text-purple-500" />
+   999→                  إثبات الدفع
+  1000→                </CardTitle>
+  1001→              </CardHeader>
+  1002→              <CardContent>
+  1003→                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-[#0F7A4F]/40 transition-colors cursor-pointer">
+  1004→                  <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+  1005→                  <p className="text-sm text-gray-500">اضغط لرفع صورة الإيصال</p>
+  1006→                  <p className="text-xs text-gray-400 mt-1">JPG, PNG حتى 5MB</p>
+  1007→                </div>
+  1008→              </CardContent>
+  1009→            </Card>
+  1010→          )}
+  1011→
+  1012→          {/* WhatsApp Message Card */}
+  1013→          <Card className="border-gray-200">
+  1014→            <CardHeader className="pb-3">
+  1015→              <CardTitle className="text-base flex items-center gap-2">
+  1016→                <MessageCircle className="h-5 w-5 text-green-600" />
+  1017→                رسالة واتساب
+  1018→              </CardTitle>
+  1019→              <CardDescription>رسالة جاهزة حسب حالة الطلب</CardDescription>
+  1020→            </CardHeader>
+  1021→            <CardContent className="space-y-3">
+  1022→              <div className="bg-[#DCF8C6] rounded-lg p-3 max-h-60 overflow-y-auto">
+  1023→                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed" dir="rtl">
+  1024→                  {whatsappMsg}
+  1025→                </pre>
+  1026→              </div>
+  1027→              <div className="flex gap-2">
+  1028→                <Button
+  1029→                  size="sm"
+  1030→                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+  1031→                  onClick={handleWhatsAppSend}
+  1032→                >
+  1033→                  <Send className="h-4 w-4 ml-1" />
+  1034→                  إرسال عبر واتساب
+  1035→                </Button>
+  1036→                <Button
+  1037→                  variant="outline"
+  1038→                  size="sm"
+  1039→                  className="border-gray-200"
+  1040→                  onClick={handleCopyMessage}
+  1041→                >
+  1042→                  {copied ? (
+  1043→                    <Check className="h-4 w-4 text-green-600" />
+  1044→                  ) : (
+  1045→                    <ExternalLink className="h-4 w-4" />
+  1046→                  )}
+  1047→                </Button>
+  1048→              </div>
+  1049→              {copied && (
+  1050→                <p className="text-xs text-green-600 text-center font-medium">تم نسخ الرسالة ✓</p>
+  1051→              )}
+  1052→            </CardContent>
+  1053→          </Card>
+  1054→
+  1055→          {/* Order Timeline Card */}
+  1056→          <Card className="border-gray-200">
+  1057→            <CardHeader className="pb-3">
+  1058→              <CardTitle className="text-base flex items-center gap-2">
+  1059→                <Clock className="h-5 w-5 text-[#0F7A4F]" />
+  1060→                سجل الطلب
+  1061→              </CardTitle>
+  1062→            </CardHeader>
+  1063→            <CardContent>
+  1064→              <div className="relative">
+  1065→                {timeline.map((entry, idx) => {
+  1066→                  const isLast = idx === timeline.length - 1;
+  1067→                  return (
+  1068→                    <div key={idx} className="flex gap-3 pb-4">
+  1069→                      {/* Line */}
+  1070→                      <div className="flex flex-col items-center">
+  1071→                        <div
+  1072→                          className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
+  1073→                            isLast
+  1074→                              ? 'bg-[#0F7A4F] ring-2 ring-[#0F7A4F]/20'
+  1075→                              : 'bg-[#0F7A4F]/60'
+  1076→                          }`}
+  1077→                        />
+  1078→                        {!isLast && (
+  1079→                          <div className="w-0.5 flex-1 bg-gray-200 mt-1" />
+  1080→                        )}
+  1081→                      </div>
+  1082→                      {/* Content */}
+  1083→                      <div className="flex-1 min-w-0 -mt-0.5">
+  1084→                        <p className="text-sm font-medium text-gray-800">
+  1085→                          {ORDER_STATUS_LABELS[entry.status as OrderStatus] || entry.status}
+  1086→                        </p>
+  1087→                        <p className="text-xs text-gray-400 mt-0.5">{formatDate(entry.time)}</p>
+  1088→                        {entry.note && (
+  1089→                          <p className="text-xs text-gray-500 mt-1 bg-gray-50 rounded px-2 py-1">
+  1090→                            {entry.note}
+  1091→                          </p>
+  1092→                        )}
+  1093→                      </div>
+  1094→                    </div>
+  1095→                  );
+  1096→                })}
+  1097→              </div>
+  1098→            </CardContent>
+  1099→          </Card>
+  1100→        </div>
+  1101→      </div>
+  1102→    </div>
+  1103→  );
+  1104→}
+  1105→
+  1106→// ============ Upload Icon (simple SVG since no icon available) ============
+  1107→function Upload({ className }: { className?: string }) {
+  1108→  return (
+  1109→    <svg
+  1110→      xmlns="http://www.w3.org/2000/svg"
+  1111→      width="24"
+  1112→      height="24"
+  1113→      viewBox="0 0 24 24"
+  1114→      fill="none"
+  1115→      stroke="currentColor"
+  1116→      strokeWidth="2"
+  1117→      strokeLinecap="round"
+  1118→      strokeLinejoin="round"
+  1119→      className={className}
+  1120→    >
+  1121→      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+  1122→      <polyline points="17 8 12 3 7 8" />
+  1123→      <line x1="12" x2="12" y1="3" y2="15" />
+  1124→    </svg>
+  1125→  );
+  1126→}

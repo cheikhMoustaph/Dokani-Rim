@@ -1,0 +1,944 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useRef } from 'react';
+     4→import { useApp } from '@/lib/store';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Separator } from '@/components/ui/separator';
+     9→import {
+    10→  Accordion,
+    11→  AccordionContent,
+    12→  AccordionItem,
+    13→  AccordionTrigger,
+    14→} from '@/components/ui/accordion';
+    15→import {
+    16→  ShoppingCart,
+    17→  Store,
+    18→  ClipboardList,
+    19→  Users,
+    20→  Megaphone,
+    21→  Truck,
+    22→  BarChart3,
+    23→  Star,
+    24→  Check,
+    25→  ArrowLeft,
+    26→  Menu,
+    27→  X,
+    28→  MessageCircle,
+    29→  Instagram,
+    30→  Twitter,
+    31→  Phone,
+    32→  Mail,
+    33→  ChevronDown,
+    34→  Play,
+    35→  Zap,
+    36→  Shield,
+    37→  Clock,
+    38→  Headphones,
+    39→} from 'lucide-react';
+    40→
+    41→/* ──────────────────────────── data ──────────────────────────── */
+    42→
+    43→const features = [
+    44→  {
+    45→    icon: Store,
+    46→    title: 'متجر إلكتروني جاهز',
+    47→    desc: 'أنشئ متجرك الإلكتروني في دقائق بدون أي خبرة تقنية',
+    48→    color: 'bg-emerald-50 text-[#0F7A4F]',
+    49→  },
+    50→  {
+    51→    icon: ClipboardList,
+    52→    title: 'إدارة الطلبات',
+    53→    desc: 'استقبل الطلبات من واتساب وموقعك وتابعها من لوحة واحدة',
+    54→    color: 'bg-amber-50 text-[#D6A84F]',
+    55→  },
+    56→  {
+    57→    icon: Users,
+    58→    title: 'CRM ذكي',
+    59→    desc: 'تعرف على زبائنك، تابعهم، وأبنِ علاقات قوية معهم',
+    60→    color: 'bg-emerald-50 text-[#0F7A4F]',
+    61→  },
+    62→  {
+    63→    icon: Megaphone,
+    64→    title: 'حملات تسويقية',
+    65→    desc: 'أنشئ حملات على واتساب وإنستغرام وزد مبيعاتك',
+    66→    color: 'bg-amber-50 text-[#D6A84F]',
+    67→  },
+    68→  {
+    69→    icon: Truck,
+    70→    title: 'التوصيل والدفع',
+    71→    desc: 'إدارة المندوبين والمناطق وتتبع التوصيل',
+    72→    color: 'bg-emerald-50 text-[#0F7A4F]',
+    73→  },
+    74→  {
+    75→    icon: BarChart3,
+    76→    title: 'التقارير والتحليلات',
+    77→    desc: 'تتبع مبيعاتك وزبائنك بتحليلات واضحة',
+    78→    color: 'bg-amber-50 text-[#D6A84F]',
+    79→  },
+    80→];
+    81→
+    82→const steps = [
+    83→  {
+    84→    num: '١',
+    85→    title: 'سجّل حسابك',
+    86→    desc: 'أنشئ حسابك مجاناً في أقل من دقيقة',
+    87→    icon: Zap,
+    88→  },
+    89→  {
+    90→    num: '٢',
+    91→    title: 'أضف منتجاتك',
+    92→    desc: 'صوّر منتجاتك وأضفها بسهولة',
+    93→    icon: Store,
+    94→  },
+    95→  {
+    96→    num: '٣',
+    97→    title: 'شارك رابط متجرك',
+    98→    desc: 'انشر الرابط على واتساب ووسائل التواصل',
+    99→    icon: ArrowLeft,
+   100→  },
+   101→  {
+   102→    num: '٤',
+   103→    title: 'استقبل الطلبات',
+   104→    desc: 'ابدأ في استقبال الطلبات وإدارتها',
+   105→    icon: ClipboardList,
+   106→  },
+   107→];
+   108→
+   109→const faqs = [
+   110→  {
+   111→    q: 'كيف أبدأ باستخدام دكاني؟',
+   112→    a: 'كل ما عليك فعله هو إنشاء حساب مجاني، إضافة منتجاتك، ومشاركة رابط متجرك مع زبائنك. العملية بأكملها لا تستغرق أكثر من 5 دقائق.',
+   113→  },
+   114→  {
+   115→    q: 'هل أحتاج خبرة تقنية؟',
+   116→    a: 'لا أبداً! دكاني مصمم ليكون سهل الاستخدام لأي شخص. لا تحتاج أي معرفة بالبرمجة أو التصميم. واجهتنا عربية بالكامل وبسيطة جداً.',
+   117→  },
+   118→  {
+   119→    q: 'ما هي طرق الدفع المتاحة؟',
+   120→    a: 'نوفر عدة طرق للدفع تشمل: الدفع عند الاستلام، التحويل البنكي، IMTransfer، Sadapay، وغيرها من الطرق المحلية في موريتانيا.',
+   121→  },
+   122→  {
+   123→    q: 'كيف يتم التوصيل؟',
+   124→    a: 'يمكنك إدارة مندوبي التوصيل وتحديد المناطق التي تغطيها. يتتبع النظام حالة كل طلب ويُعلم الزبون تلقائياً بمرحلة توصيله.',
+   125→  },
+   126→  {
+   127→    q: 'هل يمكنني تجربة المنصة مجاناً؟',
+   128→    a: 'نعم! نوفر باقة مجانية تتيح لك إضافة حتى 10 منتجات واستقبال 50 طلب شهرياً. يمكنك الترقية في أي وقت حسب حاجتك.',
+   129→  },
+   130→  {
+   131→    q: 'كيف يمكنني التواصل مع الدعم؟',
+   132→    a: 'فريق الدعم متاح عبر واتساب على مدار الساعة. يمكنك أيضاً التواصل معنا عبر البريد الإلكتروني أو نموذج الاتصال في الموقع.',
+   133→  },
+   134→];
+   135→
+   136→const pricingPlans = [
+   137→  {
+   138→    name: 'أساسي',
+   139→    price: 'مجاناً',
+   140→    priceNote: '/ بعد ٣٠ يوم تجريبية',
+   141→    features: ['10 منتجات', '50 طلب شهرياً', 'دعم عبر واتساب', 'رابط متجر مخصص'],
+   142→    recommended: false,
+   143→    cta: 'ابدأ مجاناً',
+   144→  },
+   145→  {
+   146→    name: 'احترافي',
+   147→    price: '6,000',
+   148→    priceNote: 'أوقية/شهر',
+   149→    features: [
+   150→      'منتجات غير محدودة',
+   151→      'طلبات غير محدودة',
+   152→      'تقارير وتحليلات متقدمة',
+   153→      'حملات تسويقية',
+   154→      'CRM ذكي',
+   155→      'إدارة التوصيل',
+   156→      'دعم أولوي',
+   157→    ],
+   158→    recommended: true,
+   159→    cta: 'اشترك الآن',
+   160→  },
+   161→  {
+   162→    name: 'مؤسسات',
+   163→    price: 'تواصل معنا',
+   164→    priceNote: 'حسب احتياجاتك',
+   165→    features: [
+   166→      'كل شيء في الاحترافي',
+   167→      'واجهة برمجية (API)',
+   168→      'دعم فروع متعددة',
+   169→      'دعم مخصص 24/7',
+   170→      'تدريب للفريق',
+   171→    ],
+   172→    recommended: false,
+   173→    cta: 'تواصل معنا',
+   174→  },
+   175→];
+   176→
+   177→const trustedStores = [
+   178→  'متجر النورس',
+   179→  'بازار نواكشوط',
+   180→  'سوق الكسب',
+   181→  'تجارة الأمان',
+   182→  'دار البيع',
+   183→  'سوبر ماركت السلام',
+   184→];
+   185→
+   186→const stats = [
+   187→  { value: '150+', label: 'تاجر نشط' },
+   188→  { value: '4,500+', label: 'طلب شهرياً' },
+   189→  { value: '24+', label: 'مليون أوقية مبيعات' },
+   190→  { value: '4.8', label: 'تقييم المستخدمين', icon: Star },
+   191→];
+   192→
+   193→/* ──────────────────────────── component ──────────────────────────── */
+   194→
+   195→export default function LandingPage() {
+   196→  const { setView } = useApp();
+   197→  const [scrolled, setScrolled] = useState(false);
+   198→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+   199→  const howItWorksRef = useRef<HTMLDivElement>(null);
+   200→
+   201→  useEffect(() => {
+   202→    const onScroll = () => setScrolled(window.scrollY > 20);
+   203→    window.addEventListener('scroll', onScroll, { passive: true });
+   204→    return () => window.removeEventListener('scroll', onScroll);
+   205→  }, []);
+   206→
+   207→  const scrollToHowItWorks = () => {
+   208→    howItWorksRef.current?.scrollIntoView({ behavior: 'smooth' });
+   209→    setMobileMenuOpen(false);
+   210→  };
+   211→
+   212→  const handleSignup = () => {
+   213→    setView('signup');
+   214→    setMobileMenuOpen(false);
+   215→  };
+   216→
+   217→  const handleLogin = () => {
+   218→    setView('login');
+   219→    setMobileMenuOpen(false);
+   220→  };
+   221→
+   222→  /* ──────── Navbar ──────── */
+   223→  const Navbar = (
+   224→    <nav
+   225→      className={`fixed top-0 right-0 left-0 z-50 transition-all duration-300 ${
+   226→        scrolled
+   227→          ? 'bg-white/95 backdrop-blur-md shadow-md'
+   228→          : 'bg-transparent'
+   229→      }`}
+   230→    >
+   231→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   232→        <div className="flex h-16 items-center justify-between sm:h-20">
+   233→          {/* Logo */}
+   234→          <div className="flex items-center gap-2">
+   235→            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0F7A4F] text-white sm:h-11 sm:w-11">
+   236→              <ShoppingCart className="size-5 sm:size-6" />
+   237→            </div>
+   238→            <span
+   239→              className={`text-2xl font-bold sm:text-3xl ${
+   240→                scrolled ? 'text-[#0F7A4F]' : 'text-white'
+   241→              }`}
+   242→            >
+   243→              دكاني
+   244→            </span>
+   245→          </div>
+   246→
+   247→          {/* Desktop buttons */}
+   248→          <div className="hidden items-center gap-3 sm:flex">
+   249→            <Button
+   250→              variant="ghost"
+   251→              onClick={handleLogin}
+   252→              className={`rounded-xl px-5 text-sm font-semibold ${
+   253→                scrolled
+   254→                  ? 'text-[#0F7A4F] hover:bg-[#0F7A4F]/5'
+   255→                  : 'text-white/90 hover:bg-white/10'
+   256→              }`}
+   257→            >
+   258→              تسجيل الدخول
+   259→            </Button>
+   260→            <Button
+   261→              onClick={handleSignup}
+   262→              className="rounded-xl bg-[#D6A84F] px-6 text-sm font-bold text-white shadow-lg shadow-[#D6A84F]/25 transition-all hover:bg-[#c49a42] hover:shadow-xl hover:shadow-[#D6A84F]/30 hover:-translate-y-0.5"
+   263→            >
+   264→              ابدأ مجاناً
+   265→            </Button>
+   266→          </div>
+   267→
+   268→          {/* Mobile menu button */}
+   269→          <button
+   270→            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+   271→            className={`sm:hidden rounded-lg p-2 ${
+   272→              scrolled ? 'text-[#0F7A4F]' : 'text-white'
+   273→            }`}
+   274→            aria-label="القائمة"
+   275→          >
+   276→            {mobileMenuOpen ? <X className="size-6" /> : <Menu className="size-6" />}
+   277→          </button>
+   278→        </div>
+   279→      </div>
+   280→
+   281→      {/* Mobile menu */}
+   282→      {mobileMenuOpen && (
+   283→        <div className="border-t border-white/10 bg-white px-4 pb-4 pt-2 sm:hidden">
+   284→          <div className="flex flex-col gap-2">
+   285→            <Button
+   286→              variant="ghost"
+   287→              onClick={handleLogin}
+   288→              className="justify-start rounded-xl text-[#0F7A4F]"
+   289→            >
+   290→              تسجيل الدخول
+   291→            </Button>
+   292→            <Button
+   293→              onClick={handleSignup}
+   294→              className="justify-center rounded-xl bg-[#D6A84F] font-bold text-white"
+   295→            >
+   296→              ابدأ مجاناً
+   297→            </Button>
+   298→          </div>
+   299→        </div>
+   300→      )}
+   301→    </nav>
+   302→  );
+   303→
+   304→  /* ──────── Hero ──────── */
+   305→  const Hero = (
+   306→    <section className="relative overflow-hidden bg-gradient-to-bl from-[#0F7A4F] via-[#0a6b44] to-[#074d31] pt-28 pb-20 sm:pt-36 sm:pb-28">
+   307→      {/* Decorative elements */}
+   308→      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+   309→        <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/5" />
+   310→        <div className="absolute top-1/2 -right-32 h-80 w-80 rounded-full bg-[#D6A84F]/10" />
+   311→        <div className="absolute -bottom-20 left-1/3 h-64 w-64 rounded-full bg-white/5" />
+   312→      </div>
+   313→
+   314→      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   315→        <div className="flex flex-col items-center gap-10 lg:flex-row lg:gap-16">
+   316→          {/* Text content */}
+   317→          <div className="flex-1 text-center lg:text-right">
+   318→            <Badge className="mb-6 rounded-full border-[#D6A84F]/30 bg-[#D6A84F]/15 px-4 py-1.5 text-sm font-medium text-[#D6A84F]">
+   319→              🚀 المنصة الأولى للتجارة في موريتانيا
+   320→            </Badge>
+   321→            <h1 className="mb-6 text-3xl font-extrabold leading-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
+   322→              <span className="block">دكاني — متجرك، طلباتك،</span>
+   323→              <span className="block mt-2 bg-gradient-to-l from-[#D6A84F] to-[#f0cc7a] bg-clip-text text-transparent">
+   324→                وزبناؤك من رابط واحد
+   325→              </span>
+   326→            </h1>
+   327→            <p className="mx-auto mb-8 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg lg:mx-0">
+   328→              منصة موريتانية تساعد التجار على البيع أونلاين، استقبال الطلبات،
+   329→              متابعة الزبائن، وإدارة المتجر من لوحة واحدة.
+   330→            </p>
+   331→            <div className="flex flex-col items-center gap-4 sm:flex-row lg:justify-start">
+   332→              <Button
+   333→                size="lg"
+   334→                onClick={handleSignup}
+   335→                className="h-13 rounded-xl bg-white px-8 text-base font-bold text-[#0F7A4F] shadow-xl shadow-black/10 transition-all hover:bg-white/90 hover:-translate-y-0.5 hover:shadow-2xl sm:h-14 sm:text-lg"
+   336→              >
+   337→                <Zap className="ml-2 size-5" />
+   338→                افتح متجرك مجانًا
+   339→              </Button>
+   340→              <Button
+   341→                size="lg"
+   342→                variant="outline"
+   343→                onClick={scrollToHowItWorks}
+   344→                className="h-13 rounded-xl border-2 border-white/30 bg-transparent px-8 text-base font-semibold text-white transition-all hover:border-white/60 hover:bg-white/10 sm:h-14 sm:text-lg"
+   345→              >
+   346→                <Play className="ml-2 size-5" />
+   347→                شاهد كيف يعمل
+   348→              </Button>
+   349→            </div>
+   350→
+   351→            {/* Mini trust indicators */}
+   352→            <div className="mt-8 flex items-center justify-center gap-6 text-white/60 lg:justify-start">
+   353→              <div className="flex items-center gap-1.5 text-sm">
+   354→                <Check className="size-4 text-[#D6A84F]" />
+   355→                بدون بطاقة ائتمان
+   356→              </div>
+   357→              <div className="flex items-center gap-1.5 text-sm">
+   358→                <Check className="size-4 text-[#D6A84F]" />
+   359→                إعداد في 5 دقائق
+   360→              </div>
+   361→              <div className="hidden items-center gap-1.5 text-sm sm:flex">
+   362→                <Check className="size-4 text-[#D6A84F]" />
+   363→                دعم عربي
+   364→              </div>
+   365→            </div>
+   366→          </div>
+   367→
+   368→          {/* Mock dashboard illustration */}
+   369→          <div className="relative flex-1 lg:max-w-lg">
+   370→            <div className="relative mx-auto w-full max-w-sm sm:max-w-md">
+   371→              {/* Phone frame */}
+   372→              <div className="rounded-3xl border-4 border-white/20 bg-white/10 p-3 shadow-2xl shadow-black/20 backdrop-blur-sm">
+   373→                <div className="overflow-hidden rounded-2xl bg-white">
+   374→                  {/* Status bar */}
+   375→                  <div className="flex items-center justify-between bg-[#0F7A4F] px-4 py-2">
+   376→                    <span className="text-xs font-medium text-white">9:41</span>
+   377→                    <div className="flex gap-1">
+   378→                      <div className="h-2 w-2 rounded-full bg-white/60" />
+   379→                      <div className="h-2 w-2 rounded-full bg-white/40" />
+   380→                      <div className="h-2 w-2 rounded-full bg-white/80" />
+   381→                    </div>
+   382→                  </div>
+   383→                  {/* App header */}
+   384→                  <div className="bg-[#0F7A4F] px-4 pb-4 pt-2">
+   385→                    <p className="text-xs text-white/70">مرحباً بك في</p>
+   386→                    <p className="text-lg font-bold text-white">دكاني 🛒</p>
+   387→                  </div>
+   388→                  {/* Stats row */}
+   389→                  <div className="grid grid-cols-3 gap-2 bg-gray-50 px-3 py-3">
+   390→                    <div className="rounded-xl bg-white p-2 text-center shadow-sm">
+   391→                      <p className="text-lg font-bold text-[#0F7A4F]">12</p>
+   392→                      <p className="text-[10px] text-gray-500">طلب جديد</p>
+   393→                    </div>
+   394→                    <div className="rounded-xl bg-white p-2 text-center shadow-sm">
+   395→                      <p className="text-lg font-bold text-[#D6A84F]">45K</p>
+   396→                      <p className="text-[10px] text-gray-500">مبيعات</p>
+   397→                    </div>
+   398→                    <div className="rounded-xl bg-white p-2 text-center shadow-sm">
+   399→                      <p className="text-lg font-bold text-[#0F7A4F]">89</p>
+   400→                      <p className="text-[10px] text-gray-500">زبون</p>
+   401→                    </div>
+   402→                  </div>
+   403→                  {/* Order preview */}
+   404→                  <div className="space-y-2 px-3 py-3">
+   405→                    <p className="text-xs font-semibold text-gray-700">آخر الطلبات</p>
+   406→                    {[1, 2, 3].map((i) => (
+   407→                      <div
+   408→                        key={i}
+   409→                        className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2"
+   410→                      >
+   411→                        <div className="flex items-center gap-2">
+   412→                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0F7A4F]/10">
+   413→                            <ShoppingCart className="size-3.5 text-[#0F7A4F]" />
+   414→                          </div>
+   415→                          <div>
+   416→                            <p className="text-xs font-semibold text-gray-800">
+   417→                              طلب #{1200 + i}
+   418→                            </p>
+   419→                            <p className="text-[10px] text-gray-400">منذ {i * 5} دقائق</p>
+   420→                          </div>
+   421→                        </div>
+   422→                        <Badge
+   423→                          className={`rounded-full text-[10px] px-2 py-0.5 ${
+   424→                            i === 1
+   425→                              ? 'bg-amber-100 text-amber-700'
+   426→                              : 'bg-emerald-100 text-emerald-700'
+   427→                          }`}
+   428→                        >
+   429→                          {i === 1 ? 'قيد التوصيل' : 'جديد'}
+   430→                        </Badge>
+   431→                      </div>
+   432→                    ))}
+   433→                  </div>
+   434→                  {/* Bottom nav */}
+   435→                  <div className="flex items-center justify-around border-t border-gray-100 bg-white px-2 py-3">
+   436→                    {[
+   437→                      { icon: Store, label: 'المتجر' },
+   438→                      { icon: ClipboardList, label: 'الطلبات' },
+   439→                      { icon: BarChart3, label: 'التقارير' },
+   440→                      { icon: Users, label: 'الزبائن' },
+   441→                    ].map(({ icon: Ic, label }) => (
+   442→                      <div key={label} className="flex flex-col items-center gap-0.5">
+   443→                        <Ic className="size-4 text-gray-400" />
+   444→                        <span className="text-[9px] text-gray-400">{label}</span>
+   445→                      </div>
+   446→                    ))}
+   447→                  </div>
+   448→                </div>
+   449→              </div>
+   450→              {/* Floating notification card */}
+   451→              <div className="absolute -top-3 -left-3 rounded-2xl border border-white/20 bg-white p-3 shadow-xl sm:-left-8 sm:-top-4">
+   452→                <div className="flex items-center gap-2">
+   453→                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#25D366]">
+   454→                    <MessageCircle className="size-4 text-white" />
+   455→                  </div>
+   456→                  <div>
+   457→                    <p className="text-xs font-bold text-gray-800">طلب جديد! 🎉</p>
+   458→                    <p className="text-[10px] text-gray-400">عبر واتساب</p>
+   459→                  </div>
+   460→                </div>
+   461→              </div>
+   462→              {/* Floating revenue card */}
+   463→              <div className="absolute -bottom-2 -right-2 rounded-2xl border border-white/20 bg-white p-3 shadow-xl sm:-bottom-4 sm:-right-8">
+   464→                <div className="flex items-center gap-2">
+   465→                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D6A84F]/10">
+   466→                    <BarChart3 className="size-4 text-[#D6A84F]" />
+   467→                  </div>
+   468→                  <div>
+   469→                    <p className="text-xs font-bold text-gray-800">+32% مبيعات</p>
+   470→                    <p className="text-[10px] text-gray-400">هذا الأسبوع</p>
+   471→                  </div>
+   472→                </div>
+   473→              </div>
+   474→            </div>
+   475→          </div>
+   476→        </div>
+   477→      </div>
+   478→    </section>
+   479→  );
+   480→
+   481→  /* ──────── Trusted By ──────── */
+   482→  const TrustedBy = (
+   483→    <section className="bg-[#FAFAF7] py-12 sm:py-16">
+   484→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   485→        <p className="mb-8 text-center text-sm font-medium text-gray-500 sm:text-base">
+   486→          موثوق من قبل أكثر من{' '}
+   487→          <span className="font-bold text-[#0F7A4F]">150 تاجر</span> في موريتانيا
+   488→        </p>
+   489→        <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+   490→          {trustedStores.map((name) => (
+   491→            <div
+   492→              key={name}
+   493→              className="flex items-center gap-2.5 rounded-full border border-gray-200 bg-white px-5 py-2.5 shadow-sm transition-all hover:border-[#0F7A4F]/20 hover:shadow-md"
+   494→            >
+   495→              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+   496→                <Store className="size-3.5 text-gray-400" />
+   497→              </div>
+   498→              <span className="text-sm font-medium text-gray-600">{name}</span>
+   499→            </div>
+   500→          ))}
+   501→        </div>
+   502→      </div>
+   503→    </section>
+   504→  );
+   505→
+   506→  /* ──────── Features ──────── */
+   507→  const Features = (
+   508→    <section className="bg-[#FAFAF7] pb-16 sm:pb-24">
+   509→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   510→        <div className="mb-12 text-center sm:mb-16">
+   511→          <Badge className="mb-4 rounded-full border-[#0F7A4F]/20 bg-[#0F7A4F]/5 px-4 py-1 text-sm font-medium text-[#0F7A4F]">
+   512→            مميزات المنصة
+   513→          </Badge>
+   514→          <h2 className="mb-4 text-2xl font-extrabold text-gray-900 sm:text-3xl md:text-4xl">
+   515→            كل ما تحتاجه لإدارة متجرك
+   516→          </h2>
+   517→          <p className="mx-auto max-w-2xl text-base text-gray-500 sm:text-lg">
+   518→            أدوات متكاملة تسهّل عليك إدارة تجارتك الإلكترونية من مكان واحد
+   519→          </p>
+   520→        </div>
+   521→
+   522→        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+   523→          {features.map((f) => (
+   524→            <Card
+   525→              key={f.title}
+   526→              className="group border-0 bg-white py-0 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+   527→            >
+   528→              <CardContent className="p-6">
+   529→                <div
+   530→                  className={`mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${f.color} transition-transform duration-300 group-hover:scale-110`}
+   531→                >
+   532→                  <f.icon className="size-7" />
+   533→                </div>
+   534→                <h3 className="mb-2 text-lg font-bold text-gray-900">{f.title}</h3>
+   535→                <p className="text-sm leading-relaxed text-gray-500">{f.desc}</p>
+   536→              </CardContent>
+   537→            </Card>
+   538→          ))}
+   539→        </div>
+   540→      </div>
+   541→    </section>
+   542→  );
+   543→
+   544→  /* ──────── How It Works ──────── */
+   545→  const HowItWorks = (
+   546→    <section
+   547→      ref={howItWorksRef}
+   548→      className="bg-white py-16 sm:py-24"
+   549→    >
+   550→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   551→        <div className="mb-12 text-center sm:mb-16">
+   552→          <Badge className="mb-4 rounded-full border-[#D6A84F]/20 bg-[#D6A84F]/5 px-4 py-1 text-sm font-medium text-[#D6A84F]">
+   553→            كيف يعمل؟
+   554→          </Badge>
+   555→          <h2 className="mb-4 text-2xl font-extrabold text-gray-900 sm:text-3xl md:text-4xl">
+   556→            أربع خطوات فقط وتبدأ البيع
+   557→          </h2>
+   558→          <p className="mx-auto max-w-2xl text-base text-gray-500 sm:text-lg">
+   559→            إعداد متجرك لم يكن أسهل من ذلك
+   560→          </p>
+   561→        </div>
+   562→
+   563→        <div className="relative">
+   564→          {/* Connecting line (desktop) */}
+   565→          <div className="absolute top-16 right-[12.5%] left-[12.5%] hidden h-0.5 bg-gradient-to-l from-[#0F7A4F] via-[#D6A84F] to-[#0F7A4F] lg:block" />
+   566→
+   567→          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+   568→            {steps.map((step, idx) => (
+   569→              <div key={step.title} className="relative text-center">
+   570→                {/* Step number circle */}
+   571→                <div className="relative mx-auto mb-5">
+   572→                  <div className="relative z-10 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0F7A4F] to-[#0a6b44] text-2xl font-extrabold text-white shadow-lg shadow-[#0F7A4F]/25 sm:h-[4.5rem] sm:w-[4.5rem]">
+   573→                    {step.num}
+   574→                  </div>
+   575→                  {/* Arrow between steps (mobile/tablet) */}
+   576→                  {idx < steps.length - 1 && (
+   577→                    <div className="absolute top-1/2 -left-8 z-10 hidden text-gray-300 sm:block lg:hidden">
+   578→                      <ChevronDown className="size-5 rotate-90" />
+   579→                    </div>
+   580→                  )}
+   581→                </div>
+   582→
+   583→                <div className="mx-auto max-w-[220px]">
+   584→                  <div className="mb-2 flex items-center justify-center gap-2">
+   585→                    <step.icon className="size-5 text-[#D6A84F]" />
+   586→                    <h3 className="text-base font-bold text-gray-900 sm:text-lg">
+   587→                      {step.title}
+   588→                    </h3>
+   589→                  </div>
+   590→                  <p className="text-sm leading-relaxed text-gray-500">{step.desc}</p>
+   591→                </div>
+   592→              </div>
+   593→            ))}
+   594→          </div>
+   595→        </div>
+   596→      </div>
+   597→    </section>
+   598→  );
+   599→
+   600→  /* ──────── Stats ──────── */
+   601→  const Stats = (
+   602→    <section className="relative overflow-hidden bg-gradient-to-bl from-[#0F7A4F] via-[#0a6b44] to-[#074d31] py-14 sm:py-20">
+   603→      <div className="pointer-events-none absolute inset-0">
+   604→        <div className="absolute -top-16 -right-16 h-64 w-64 rounded-full bg-[#D6A84F]/10" />
+   605→        <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-white/5" />
+   606→      </div>
+   607→      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   608→        <div className="grid grid-cols-2 gap-8 sm:gap-12 lg:grid-cols-4">
+   609→          {stats.map((s) => (
+   610→            <div key={s.label} className="text-center">
+   611→              <div className="mb-2 flex items-center justify-center gap-1.5">
+   612→                {s.icon && <s.icon className="size-6 text-[#D6A84F] fill-[#D6A84F]" />}
+   613→                <span className="text-3xl font-extrabold text-white sm:text-4xl md:text-5xl">
+   614→                  {s.value}
+   615→                </span>
+   616→              </div>
+   617→              <p className="text-sm text-white/70 sm:text-base">{s.label}</p>
+   618→            </div>
+   619→          ))}
+   620→        </div>
+   621→      </div>
+   622→    </section>
+   623→  );
+   624→
+   625→  /* ──────── Pricing ──────── */
+   626→  const Pricing = (
+   627→    <section className="bg-[#FAFAF7] py-16 sm:py-24">
+   628→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   629→        <div className="mb-12 text-center sm:mb-16">
+   630→          <Badge className="mb-4 rounded-full border-[#0F7A4F]/20 bg-[#0F7A4F]/5 px-4 py-1 text-sm font-medium text-[#0F7A4F]">
+   631→            الأسعار
+   632→          </Badge>
+   633→          <h2 className="mb-4 text-2xl font-extrabold text-gray-900 sm:text-3xl md:text-4xl">
+   634→            خطط تناسب جميع التجار
+   635→          </h2>
+   636→          <p className="mx-auto max-w-2xl text-base text-gray-500 sm:text-lg">
+   637→            ابدأ مجاناً وارتقِ حسب نمو تجارتك
+   638→          </p>
+   639→        </div>
+   640→
+   641→        <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+   642→          {pricingPlans.map((plan) => (
+   643→            <Card
+   644→              key={plan.name}
+   645→              className={`relative overflow-hidden border-0 bg-white py-0 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+   646→                plan.recommended
+   647→                  ? 'ring-2 ring-[#D6A84F] shadow-[#D6A84F]/10'
+   648→                  : ''
+   649→              }`}
+   650→            >
+   651→              {plan.recommended && (
+   652→                <div className="absolute top-0 left-0 right-0 bg-gradient-to-l from-[#D6A84F] to-[#e8c56d] px-4 py-1.5 text-center">
+   653→                  <span className="text-xs font-bold text-white">
+   654→                    ⭐ الأكثر طلباً
+   655→                  </span>
+   656→                </div>
+   657→              )}
+   658→              <CardHeader className={`pb-2 ${plan.recommended ? 'pt-10' : ''}`}>
+   659→                <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
+   660→                <div className="mt-3 flex items-baseline gap-1">
+   661→                  <span
+   662→                    className={`text-3xl font-extrabold sm:text-4xl ${
+   663→                      plan.price === 'مجاناً'
+   664→                        ? 'text-[#0F7A4F]'
+   665→                        : plan.price === 'تواصل معنا'
+   666→                          ? 'text-[#0F7A4F]'
+   667→                          : 'text-[#0F7A4F]'
+   668→                    }`}
+   669→                  >
+   670→                    {plan.price}
+   671→                  </span>
+   672→                  {plan.priceNote !== '/ بعد ٣٠ يوم تجريبية' && (
+   673→                    <span className="text-sm text-gray-400">{plan.priceNote}</span>
+   674→                  )}
+   675→                </div>
+   676→                {plan.price === 'مجاناً' && (
+   677→                  <p className="mt-1 text-xs text-gray-400">{plan.priceNote}</p>
+   678→                )}
+   679→              </CardHeader>
+   680→              <CardContent className="pt-2">
+   681→                <Separator className="mb-4" />
+   682→                <ul className="space-y-3">
+   683→                  {plan.features.map((feat) => (
+   684→                    <li key={feat} className="flex items-start gap-2.5">
+   685→                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0F7A4F]/10">
+   686→                        <Check className="size-3 text-[#0F7A4F]" />
+   687→                      </div>
+   688→                      <span className="text-sm text-gray-600">{feat}</span>
+   689→                    </li>
+   690→                  ))}
+   691→                </ul>
+   692→              </CardContent>
+   693→              <CardFooter className="pt-2">
+   694→                <Button
+   695→                  onClick={plan.price === 'تواصل معنا' ? undefined : handleSignup}
+   696→                  className={`w-full rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 ${
+   697→                    plan.recommended
+   698→                      ? 'bg-[#D6A84F] text-white shadow-lg shadow-[#D6A84F]/25 hover:bg-[#c49a42]'
+   699→                      : 'bg-[#0F7A4F] text-white shadow-lg shadow-[#0F7A4F]/20 hover:bg-[#0a6b44]'
+   700→                  }`}
+   701→                >
+   702→                  {plan.cta}
+   703→                </Button>
+   704→              </CardFooter>
+   705→            </Card>
+   706→          ))}
+   707→        </div>
+   708→      </div>
+   709→    </section>
+   710→  );
+   711→
+   712→  /* ──────── FAQ ──────── */
+   713→  const FAQ = (
+   714→    <section className="bg-white py-16 sm:py-24">
+   715→      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+   716→        <div className="mb-12 text-center sm:mb-16">
+   717→          <Badge className="mb-4 rounded-full border-[#D6A84F]/20 bg-[#D6A84F]/5 px-4 py-1 text-sm font-medium text-[#D6A84F]">
+   718→            الأسئلة الشائعة
+   719→          </Badge>
+   720→          <h2 className="mb-4 text-2xl font-extrabold text-gray-900 sm:text-3xl md:text-4xl">
+   721→            عندك سؤال؟ هنا تجد الجواب
+   722→          </h2>
+   723→          <p className="text-base text-gray-500 sm:text-lg">
+   724→            الإجابات على أكثر الأسئلة شيوعاً عن دكاني
+   725→          </p>
+   726→        </div>
+   727→
+   728→        <Accordion
+   729→          type="single"
+   730→          collapsible
+   731→          className="w-full space-y-3"
+   732→        >
+   733→          {faqs.map((faq, idx) => (
+   734→            <AccordionItem
+   735→              key={idx}
+   736→              value={`faq-${idx}`}
+   737→              className="rounded-xl border border-gray-200 bg-[#FAFAF7] px-5 data-[state=open]:border-[#0F7A4F]/20 data-[state=open]:bg-[#0F7A4F]/5 transition-colors"
+   738→            >
+   739→              <AccordionTrigger className="text-right text-base font-semibold text-gray-800 hover:no-underline sm:text-lg">
+   740→                {faq.q}
+   741→              </AccordionTrigger>
+   742→              <AccordionContent className="text-right text-sm leading-relaxed text-gray-600 sm:text-base">
+   743→                {faq.a}
+   744→              </AccordionContent>
+   745→            </AccordionItem>
+   746→          ))}
+   747→        </Accordion>
+   748→      </div>
+   749→    </section>
+   750→  );
+   751→
+   752→  /* ──────── Final CTA ──────── */
+   753→  const FinalCTA = (
+   754→    <section className="relative overflow-hidden bg-gradient-to-bl from-[#0F7A4F] via-[#0a6b44] to-[#074d31] py-16 sm:py-24">
+   755→      <div className="pointer-events-none absolute inset-0">
+   756→        <div className="absolute -top-20 right-1/4 h-72 w-72 rounded-full bg-[#D6A84F]/10" />
+   757→        <div className="absolute -bottom-20 left-1/4 h-72 w-72 rounded-full bg-white/5" />
+   758→      </div>
+   759→      <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+   760→        <h2 className="mb-4 text-2xl font-extrabold text-white sm:text-3xl md:text-4xl lg:text-5xl">
+   761→          ابدأ بيعك أونلاين اليوم
+   762→        </h2>
+   763→        <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
+   764→          انضم إلى أكثر من 150 تاجر موريتاني يستخدمون دكاني لتنمية تجارتهم.
+   765→          الاشتراك مجاني وبدون بطاقة ائتمان.
+   766→        </p>
+   767→        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+   768→          <Button
+   769→            size="lg"
+   770→            onClick={handleSignup}
+   771→            className="h-13 rounded-xl bg-white px-8 text-base font-bold text-[#0F7A4F] shadow-xl shadow-black/10 transition-all hover:bg-white/90 hover:-translate-y-0.5 sm:h-14 sm:text-lg"
+   772→          >
+   773→            <Zap className="ml-2 size-5" />
+   774→            افتح متجرك مجانًا
+   775→          </Button>
+   776→          <Button
+   777→            size="lg"
+   778→            variant="outline"
+   779→            className="h-13 rounded-xl border-2 border-white/30 bg-transparent px-8 text-base font-semibold text-white transition-all hover:border-white/60 hover:bg-white/10 sm:h-14 sm:text-lg"
+   780→          >
+   781→            <MessageCircle className="ml-2 size-5" />
+   782→            تواصل معنا عبر واتساب
+   783→          </Button>
+   784→        </div>
+   785→
+   786→        {/* Trust badges */}
+   787→        <div className="mt-10 flex flex-wrap items-center justify-center gap-6 sm:gap-10">
+   788→          <div className="flex items-center gap-2 text-white/60">
+   789→            <Shield className="size-5" />
+   790→            <span className="text-sm">آمن 100%</span>
+   791→          </div>
+   792→          <div className="flex items-center gap-2 text-white/60">
+   793→            <Clock className="size-5" />
+   794→            <span className="text-sm">إعداد سريع</span>
+   795→          </div>
+   796→          <div className="flex items-center gap-2 text-white/60">
+   797→            <Headphones className="size-5" />
+   798→            <span className="text-sm">دعم مستمر</span>
+   799→          </div>
+   800→        </div>
+   801→      </div>
+   802→    </section>
+   803→  );
+   804→
+   805→  /* ──────── Footer ──────── */
+   806→  const Footer = (
+   807→    <footer className="bg-[#0a5c3a] pt-14 pb-8 sm:pt-20">
+   808→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   809→        <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-12">
+   810→          {/* Brand column */}
+   811→          <div className="col-span-2 sm:col-span-2 lg:col-span-1">
+   812→            <div className="mb-4 flex items-center gap-2">
+   813→              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white">
+   814→                <ShoppingCart className="size-5" />
+   815→              </div>
+   816→              <span className="text-2xl font-bold text-white">دكاني</span>
+   817→            </div>
+   818→            <p className="mb-6 max-w-xs text-sm leading-relaxed text-white/60">
+   819→              المنصة الأولى لإدارة التجارة الإلكترونية في موريتانيا.
+   820→              vendez plus, gérez mieux.
+   821→            </p>
+   822→            <div className="flex items-center gap-3">
+   823→              <a
+   824→                href="#"
+   825→                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70 transition-all hover:bg-[#25D366] hover:text-white"
+   826→                aria-label="واتساب"
+   827→              >
+   828→                <MessageCircle className="size-5" />
+   829→              </a>
+   830→              <a
+   831→                href="#"
+   832→                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70 transition-all hover:bg-gradient-to-br hover:from-purple-500 hover:to-pink-500 hover:text-white"
+   833→                aria-label="إنستغرام"
+   834→              >
+   835→                <Instagram className="size-5" />
+   836→              </a>
+   837→              <a
+   838→                href="#"
+   839→                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70 transition-all hover:bg-sky-500 hover:text-white"
+   840→                aria-label="تويتر"
+   841→              >
+   842→                <Twitter className="size-5" />
+   843→              </a>
+   844→              <a
+   845→                href="#"
+   846→                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70 transition-all hover:bg-[#0F7A4F] hover:text-white"
+   847→                aria-label="اتصل بنا"
+   848→              >
+   849→                <Phone className="size-5" />
+   850→              </a>
+   851→            </div>
+   852→          </div>
+   853→
+   854→          {/* Product column */}
+   855→          <div>
+   856→            <h4 className="mb-4 text-sm font-bold text-white">المنتج</h4>
+   857→            <ul className="space-y-3">
+   858→              {['المميزات', 'الأسعار', 'التكاملات', 'التحديثات'].map((link) => (
+   859→                <li key={link}>
+   860→                  <a
+   861→                    href="#"
+   862→                    className="text-sm text-white/50 transition-colors hover:text-white"
+   863→                  >
+   864→                    {link}
+   865→                  </a>
+   866→                </li>
+   867→              ))}
+   868→            </ul>
+   869→          </div>
+   870→
+   871→          {/* Company column */}
+   872→          <div>
+   873→            <h4 className="mb-4 text-sm font-bold text-white">الشركة</h4>
+   874→            <ul className="space-y-3">
+   875→              {['من نحن', 'المدونة', 'الوظائف', 'الشركاء'].map((link) => (
+   876→                <li key={link}>
+   877→                  <a
+   878→                    href="#"
+   879→                    className="text-sm text-white/50 transition-colors hover:text-white"
+   880→                  >
+   881→                    {link}
+   882→                  </a>
+   883→                </li>
+   884→              ))}
+   885→            </ul>
+   886→          </div>
+   887→
+   888→          {/* Support column */}
+   889→          <div>
+   890→            <h4 className="mb-4 text-sm font-bold text-white">الدعم</h4>
+   891→            <ul className="space-y-3">
+   892→              {[
+   893→                'مركز المساعدة',
+   894→                'تواصل معنا',
+   895→                'الشروط والأحكام',
+   896→                'سياسة الخصوصية',
+   897→              ].map((link) => (
+   898→                <li key={link}>
+   899→                  <a
+   900→                    href="#"
+   901→                    className="text-sm text-white/50 transition-colors hover:text-white"
+   902→                  >
+   903→                    {link}
+   904→                  </a>
+   905→                </li>
+   906→              ))}
+   907→            </ul>
+   908→          </div>
+   909→        </div>
+   910→
+   911→        <Separator className="my-8 bg-white/10" />
+   912→
+   913→        <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+   914→          <p className="text-sm text-white/40">
+   915→            © 2026 دكاني. جميع الحقوق محفوظة.
+   916→          </p>
+   917→          <div className="flex items-center gap-1 text-sm text-white/40">
+   918→            <span>صُنع بـ</span>
+   919→            <span className="text-red-400">❤</span>
+   920→            <span>في موريتانيا 🇲🇷</span>
+   921→          </div>
+   922→        </div>
+   923→      </div>
+   924→    </footer>
+   925→  );
+   926→
+   927→  /* ──────── Render ──────── */
+   928→  return (
+   929→    <div dir="rtl" className="min-h-screen bg-[#FAFAF7]">
+   930→      {Navbar}
+   931→      <main>
+   932→        {Hero}
+   933→        {TrustedBy}
+   934→        {Features}
+   935→        {HowItWorks}
+   936→        {Stats}
+   937→        {Pricing}
+   938→        {FAQ}
+   939→        {FinalCTA}
+   940→      </main>
+   941→      {Footer}
+   942→    </div>
+   943→  );
+   944→}

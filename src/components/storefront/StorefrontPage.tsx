@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '@/lib/store';
-import { DEMO_STORES, DEMO_PRODUCTS, DEMO_CATEGORIES, formatMRU } from '@/lib/demo-data';
+import { DEMO_STORES, DEMO_PRODUCTS, DEMO_CATEGORIES, DEMO_PAYMENT_METHODS, DEMO_STORE_PAGES, DEMO_SOCIAL_LINKS, formatMRU } from '@/lib/demo-data';
+import { PAYMENT_METHOD_LABELS, SOCIAL_PLATFORM_LABELS, type PaymentMethodType, type SocialPlatform } from '@/lib/types';
 import type { DemoProduct, CartItem } from '@/lib/types';
 import { cartItems as initialCart } from '@/lib/demo-data';
 
@@ -11,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,7 +89,7 @@ export default function StorefrontPage() {
     city: '',
     area: '',
     deliveryMethod: 'delivery' as 'delivery' | 'pickup',
-    paymentMethod: 'cash' as 'cash' | 'manual_transfer',
+    paymentMethod: 'pm6',
     notes: '',
     agreePolicy: false,
   });
@@ -157,7 +159,8 @@ export default function StorefrontPage() {
 
   const handleCheckout = () => {
     if (!checkoutForm.name || !checkoutForm.phone || !checkoutForm.city || !checkoutForm.agreePolicy) return;
-    if (checkoutForm.paymentMethod === 'manual_transfer' && !proofFile) return;
+    const selectedPm = DEMO_PAYMENT_METHODS.find(pm => pm.id === checkoutForm.paymentMethod);
+    if (selectedPm && selectedPm.type !== 'cash' && !proofFile) return;
     setSuccessOpen(true);
   };
 
@@ -166,7 +169,7 @@ export default function StorefrontPage() {
     setCart([]);
     setCheckoutForm({
       name: '', phone: '', city: '', area: '',
-      deliveryMethod: 'delivery', paymentMethod: 'cash',
+      deliveryMethod: 'delivery', paymentMethod: 'pm6',
       notes: '', agreePolicy: false,
     });
     setProofFile(null);
@@ -328,64 +331,73 @@ export default function StorefrontPage() {
                     {/* Payment Method */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">طريقة الدفع</label>
-                      <Select
-                        value={checkoutForm.paymentMethod}
-                        onValueChange={v => setCheckoutForm(f => ({ ...f, paymentMethod: v as 'cash' | 'manual_transfer' }))}
-                      >
-                        <SelectTrigger className="border-gray-200 rounded-xl h-11">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cash">
-                            <span className="flex items-center gap-2">
-                              <CreditCard className="h-4 w-4" />
-                              الدفع عند الاستلام
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="manual_transfer">
-                            <span className="flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              تحويل يدوي
-                            </span>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {DEMO_PAYMENT_METHODS.filter(pm => pm.isActive).map((pm) => {
+                          const isSelected = checkoutForm.paymentMethod === pm.id;
+                          const colors: Record<string, string> = {
+                            bankily: 'bg-orange-500', sedad: 'bg-blue-500', masrvi: 'bg-green-500',
+                            bim_bank: 'bg-purple-500', click: 'bg-cyan-500', cash: 'bg-gray-500', other: 'bg-yellow-500'
+                          };
+                          return (
+                            <button
+                              key={pm.id}
+                              type="button"
+                              onClick={() => setCheckoutForm(prev => ({ ...prev, paymentMethod: pm.id }))}
+                              className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                                isSelected ? 'border-[#0F7A4F] bg-[#0F7A4F]/5' : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className={`w-10 h-10 rounded-full ${colors[pm.type] || 'bg-gray-400'} flex items-center justify-center text-white font-bold text-sm`}>
+                                {pm.name.charAt(0)}
+                              </div>
+                              <div className="flex flex-col items-start">
+                                <span className="text-sm font-medium">{pm.name}</span>
+                                <span className="text-[10px] text-gray-400">{PAYMENT_METHOD_LABELS[pm.type as PaymentMethodType]}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    {/* Payment Proof Upload */}
-                    {checkoutForm.paymentMethod === 'manual_transfer' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          إثبات التحويل <span className="text-red-500">*</span>
-                        </label>
-                        <div
-                          className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-green-400 transition-colors"
-                          style={{ borderColor: proofFile ? '#0F7A4F' : '#d0d0c8' }}
-                          onClick={() => setProofFile('receipt_uploaded.png')}
-                        >
-                          {proofFile ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <CheckCircle className="h-10 w-10" style={{ color: '#0F7A4F' }} />
-                              <p className="text-sm font-semibold" style={{ color: '#0F7A4F' }}>
-                                تم رفع الإيصال بنجاح
-                              </p>
-                              <button
-                                onClick={e => { e.stopPropagation(); setProofFile(null); }}
-                                className="text-xs text-red-500 hover:underline"
-                              >
-                                حذف وإعادة الرفع
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center gap-2">
-                              <Upload className="h-10 w-10 text-gray-400" />
-                              <p className="text-sm text-gray-500">اضغط لرفع صورة إيصال التحويل</p>
-                              <p className="text-xs text-gray-400">PNG, JPG حتى 5MB</p>
+                    {/* Manual Payment Fields */}
+                    {(() => {
+                      const selectedPm = DEMO_PAYMENT_METHODS.find(pm => pm.id === checkoutForm.paymentMethod);
+                      if (!selectedPm || selectedPm.type === 'cash') return null;
+                      return (
+                        <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-3 border border-gray-100">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 mb-1">تعليمات الدفع</p>
+                            <p className="text-sm text-gray-700">{selectedPm.instructions}</p>
+                          </div>
+                          {selectedPm.accountNumber && (
+                            <div>
+                              <p className="text-xs font-semibold text-gray-500 mb-1">رقم الحساب</p>
+                              <p className="text-sm font-bold text-gray-900" dir="ltr">{selectedPm.accountNumber}</p>
                             </div>
                           )}
+                          <div>
+                            <Label className="text-sm font-semibold">صورة الإيصال *</Label>
+                            <div className="mt-1 flex items-center gap-2">
+                              <label className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                                <Upload className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm text-gray-600">اختر ملف</span>
+                                <input type="file" accept=".jpg,.png,.pdf" className="hidden" />
+                              </label>
+                              <span className="text-xs text-gray-400">JPG, PNG, PDF</span>
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-semibold">رقم العملية (اختياري)</Label>
+                            <Input className="mt-1" dir="ltr" placeholder="أدخل رقم العملية" />
+                          </div>
+                          <div>
+                            <Label className="text-sm font-semibold">ملاحظة (اختياري)</Label>
+                            <Textarea className="mt-1" placeholder="أضف ملاحظة..." />
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     <Separator className="my-1" />
 
@@ -487,7 +499,10 @@ export default function StorefrontPage() {
                         !checkoutForm.phone ||
                         !checkoutForm.city ||
                         !checkoutForm.agreePolicy ||
-                        (checkoutForm.paymentMethod === 'manual_transfer' && !proofFile)
+                        (() => {
+                          const pm = DEMO_PAYMENT_METHODS.find(p => p.id === checkoutForm.paymentMethod);
+                          return pm && pm.type !== 'cash' && !proofFile;
+                        })()
                       }
                       onClick={handleCheckout}
                     >
@@ -541,6 +556,33 @@ export default function StorefrontPage() {
           subtotal={cartSubtotal}
         />
 
+        <StorefrontFooter store={store} />
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // STORE PAGE VIEW
+  // ═══════════════════════════════════════════════════════════
+  if (currentView === 'storefront-page' && viewParams.pageId) {
+    const page = DEMO_STORE_PAGES.find(p => p.id === viewParams.pageId);
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FAFAF7' }}>
+        <TopBar cartCount={cartCount} onCartOpen={() => setCartOpen(true)} />
+        <main className="flex-1">
+          {page ? (
+            <div className="max-w-3xl mx-auto px-4 py-8">
+              <button onClick={goBack} className="flex items-center gap-1 text-sm text-[#0F7A4F] hover:underline mb-4">
+                <ChevronRight className="h-4 w-4" />
+                العودة للمتجر
+              </button>
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">{page.title}</h1>
+              <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{page.content}</div>
+            </div>
+          ) : (
+            <p className="text-center py-12 text-gray-500">الصفحة غير موجودة</p>
+          )}
+        </main>
         <StorefrontFooter store={store} />
       </div>
     );
@@ -778,7 +820,48 @@ export default function StorefrontPage() {
       />
 
       {/* Footer */}
-      <StorefrontFooter store={store} />
+      <footer className="bg-gray-900 text-white mt-12">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Store Info */}
+            <div>
+              <h3 className="text-lg font-bold mb-2">{store.name}</h3>
+              <p className="text-sm text-gray-400">{store.description}</p>
+            </div>
+            {/* Pages Links */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">روابط مهمة</h4>
+              <div className="space-y-2">
+                {DEMO_STORE_PAGES.filter(p => p.storeId === store.id && p.status === 'published' && p.showInFooter).map(page => (
+                  <button
+                    key={page.id}
+                    onClick={() => setView('storefront-page', { pageId: page.id })}
+                    className="block text-sm text-gray-400 hover:text-white transition-colors"
+                  >
+                    {page.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Social Links */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">تابعينا</h4>
+              <div className="flex gap-3">
+                {DEMO_SOCIAL_LINKS.filter(sl => sl.storeId === store.id && sl.isActive).map(sl => (
+                  <a key={sl.id} href={sl.url} target="_blank" rel="noopener noreferrer"
+                     className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                    <span className="text-xs font-bold">{SOCIAL_PLATFORM_LABELS[sl.platform as SocialPlatform]?.charAt(0)}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+          <Separator className="my-6 bg-gray-700" />
+          <div className="text-center text-xs text-gray-500">
+            جميع الحقوق محفوظة {store.name} — مدعوم بواسطة دكاني
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

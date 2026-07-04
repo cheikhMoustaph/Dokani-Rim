@@ -9,6 +9,9 @@ import {
   DEMO_ORDERS,
   DEMO_INVOICES,
   formatMRU,
+  IS_DEV_MODE,
+  EMPTY_MERCHANT_STATS,
+  ONBOARDING_CHECKLIST,
 } from '@/lib/demo-data';
 import {
   ORDER_STATUS_LABELS,
@@ -45,6 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -52,13 +56,21 @@ import {
   DeliveryModule, AutomationModule,
 } from '@/components/merchant/AdditionalModules';
 import OrdersModule from '@/components/orders/OrdersModule';
+import {
+  StoreBuilderIdentity, StoreBuilderSections, StoreBuilderPages,
+  StoreBuilderSocial, StoreBuilderPreview, StoreBuilderMain,
+} from '@/components/merchant/StoreBuilder';
+import {
+  AccountingOverview, AccountingPaymentMethods, AccountingPaymentReview,
+  AccountingTransactions, AccountingReports, AccountingMain,
+} from '@/components/merchant/AccountingModule';
 
 import {
   LayoutDashboard, ShoppingBag, Package, FolderOpen, Users, Megaphone,
   Tag, CreditCard, FileText, Truck, Bike, BarChart3, Settings, Zap,
   Plus, Search, Filter, MoreVertical, Edit, Trash2, Eye,
   ArrowUpDown, ChevronLeft, X, Check, Star, TrendingUp, TrendingDown,
-  DollarSign, Clock, AlertCircle, Menu, Bell,
+  DollarSign, Clock, AlertCircle, Menu, Bell, Store, Calculator, Share2,
 } from 'lucide-react';
 
 // ───────────────────────────── NAVIGATION ITEMS ─────────────────────────────
@@ -76,6 +88,8 @@ const NAV_ITEMS = [
   { label: 'المندوبون', icon: Bike, view: 'delivery-agents' as const },
   { label: 'التقارير', icon: BarChart3, view: 'reports' as const },
   { label: 'الأتمتة', icon: Zap, view: 'automation' as const },
+  { label: 'بناء المتجر', icon: Store, view: 'store-builder' as const },
+  { label: 'المحاسبة', icon: Calculator, view: 'accounting' as const },
   { label: 'إعدادات المتجر', icon: Settings, view: 'settings' as const },
 ];
 
@@ -233,17 +247,141 @@ function TopBar() {
 // ═══════════════════════════════════════════════════════════════════════════
 function DashboardOverview() {
   const { setView } = useApp();
-  const latestOrders = DEMO_ORDERS.slice(0, 5);
-  const bestSellers = DEMO_PRODUCTS.filter(p => p.isBestSeller).slice(0, 3);
+
+  if (IS_DEV_MODE) {
+    const latestOrders = DEMO_ORDERS.slice(0, 5);
+    const bestSellers = DEMO_PRODUCTS.filter(p => p.isBestSeller).slice(0, 3);
+
+    return (
+      <div className="space-y-6">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {STAT_CARDS.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.label} className="rounded-xl border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${stat.iconBg}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 truncate">{stat.label}</p>
+                    <p className="text-lg font-bold text-gray-900 truncate">{stat.value}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Recent Orders */}
+        <Card className="rounded-xl border-gray-100 shadow-sm">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-bold">الطلبات الأخيرة</CardTitle>
+            <Button variant="ghost" size="sm" className="text-[#0F7A4F] text-xs" onClick={() => setView('orders')}>
+              عرض الكل
+              <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+            </Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-gray-100">
+                    <TableHead className="text-xs font-semibold text-gray-500">رقم الطلب</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-500">الزبون</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-500">المبلغ</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-500">الحالة</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-500 hidden md:table-cell">المصدر</TableHead>
+                    <TableHead className="text-xs font-semibold text-gray-500 hidden lg:table-cell">التاريخ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {latestOrders.map((order) => (
+                    <TableRow
+                      key={order.id}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => setView('order-details', { id: order.id })}
+                    >
+                      <TableCell className="text-sm font-medium text-gray-900">{order.orderNumber}</TableCell>
+                      <TableCell className="text-sm text-gray-700">{order.customerName}</TableCell>
+                      <TableCell className="text-sm font-medium text-gray-900">{formatMRU(order.total)}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={`text-[10px] px-2 py-0.5 rounded-full ${ORDER_STATUS_COLORS[order.status]}`}>
+                          {ORDER_STATUS_LABELS[order.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600 hidden md:table-cell">{order.source}</TableCell>
+                      <TableCell className="text-sm text-gray-500 hidden lg:table-cell">
+                        {new Date(order.createdAt).toLocaleDateString('ar-MR')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Best Sellers */}
+        <Card className="rounded-xl border-gray-100 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold">المنتجات الأكثر مبيعاً</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {bestSellers.map((product, idx) => (
+                <div key={product.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
+                    <Package className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      {idx < 3 && (
+                        <span className="flex items-center justify-center h-5 w-5 rounded-full bg-[#D6A84F] text-white text-[10px] font-bold">
+                          {idx + 1}
+                        </span>
+                      )}
+                      <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                    </div>
+                    <p className="text-sm font-bold text-[#0F7A4F] mt-0.5">{formatMRU(product.price)}</p>
+                  </div>
+                  <Star className="h-4 w-4 text-[#D6A84F] fill-[#D6A84F] shrink-0" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Empty state for real new merchants ──
+  const emptyStatCards = [
+    { label: 'إجمالي الطلبات', value: EMPTY_MERCHANT_STATS.totalOrders, icon: ShoppingBag, bg: 'bg-emerald-50', iconBg: 'bg-emerald-100 text-emerald-700' },
+    { label: 'طلبات جديدة', value: EMPTY_MERCHANT_STATS.newOrders, icon: Clock, bg: 'bg-blue-50', iconBg: 'bg-blue-100 text-blue-700' },
+    { label: 'الزبائن', value: EMPTY_MERCHANT_STATS.customers, icon: Users, bg: 'bg-purple-50', iconBg: 'bg-purple-100 text-purple-700' },
+    { label: 'المنتجات', value: EMPTY_MERCHANT_STATS.products, icon: Package, bg: 'bg-cyan-50', iconBg: 'bg-cyan-100 text-cyan-700' },
+    { label: 'الإيرادات', value: formatMRU(EMPTY_MERCHANT_STATS.revenue), icon: DollarSign, bg: 'bg-amber-50', iconBg: 'bg-amber-100 text-amber-700' },
+    { label: 'الحملات النشطة', value: EMPTY_MERCHANT_STATS.activeCampaigns, icon: Megaphone, bg: 'bg-orange-50', iconBg: 'bg-orange-100 text-orange-700' },
+    { label: 'مدفوعات معلقة', value: EMPTY_MERCHANT_STATS.pendingPayments, icon: CreditCard, bg: 'bg-red-50', iconBg: 'bg-red-100 text-red-700' },
+    { label: 'طلبات التوصيل', value: EMPTY_MERCHANT_STATS.deliveryOrders, icon: Truck, bg: 'bg-indigo-50', iconBg: 'bg-indigo-100 text-indigo-700' },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Stat Cards */}
+      {/* Welcome */}
+      <div className="text-center py-6">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900">مرحباً بك في دكاني! 🎉</h2>
+        <p className="text-sm text-gray-500 mt-2">ابدأ بإعداد متجرك لاستقبال أول طلب</p>
+      </div>
+
+      {/* Empty Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {STAT_CARDS.map((stat) => {
+        {emptyStatCards.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.label} className="rounded-xl border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <Card key={stat.label} className="rounded-xl border-gray-100 shadow-sm">
               <CardContent className="p-4 flex items-center gap-4">
                 <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${stat.iconBg}`}>
                   <Icon className="h-5 w-5" />
@@ -258,82 +396,50 @@ function DashboardOverview() {
         })}
       </div>
 
-      {/* Recent Orders */}
+      {/* Onboarding Checklist */}
       <Card className="rounded-xl border-gray-100 shadow-sm">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base font-bold">الطلبات الأخيرة</CardTitle>
-          <Button variant="ghost" size="sm" className="text-[#0F7A4F] text-xs" onClick={() => setView('orders')}>
-            عرض الكل
-            <ChevronLeft className="h-3.5 w-3.5 mr-1" />
-          </Button>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-bold">قائمة المهام الأولى</CardTitle>
+          <CardDescription className="text-xs text-gray-500">أكمل هذه الخطوات لتفعيل متجرك</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent border-gray-100">
-                  <TableHead className="text-xs font-semibold text-gray-500">رقم الطلب</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-500">الزبون</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-500">المبلغ</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-500">الحالة</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-500 hidden md:table-cell">المصدر</TableHead>
-                  <TableHead className="text-xs font-semibold text-gray-500 hidden lg:table-cell">التاريخ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {latestOrders.map((order) => (
-                  <TableRow
-                    key={order.id}
-                    className="cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={() => setView('order-details', { id: order.id })}
-                  >
-                    <TableCell className="text-sm font-medium text-gray-900">{order.orderNumber}</TableCell>
-                    <TableCell className="text-sm text-gray-700">{order.customerName}</TableCell>
-                    <TableCell className="text-sm font-medium text-gray-900">{formatMRU(order.total)}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={`text-[10px] px-2 py-0.5 rounded-full ${ORDER_STATUS_COLORS[order.status]}`}>
-                        {ORDER_STATUS_LABELS[order.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600 hidden md:table-cell">{order.source}</TableCell>
-                    <TableCell className="text-sm text-gray-500 hidden lg:table-cell">
-                      {new Date(order.createdAt).toLocaleDateString('ar-MR')}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+        <CardContent>
+          <div className="space-y-3">
+            {ONBOARDING_CHECKLIST.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <Checkbox
+                  checked={item.completed}
+                  disabled
+                  className="shrink-0"
+                />
+                <span className="flex-1 text-sm text-gray-700">{item.label}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-[#0F7A4F] shrink-0"
+                  onClick={() => setView(item.view as any)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Best Sellers */}
-      <Card className="rounded-xl border-gray-100 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-bold">المنتجات الأكثر مبيعاً</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {bestSellers.map((product, idx) => (
-              <div key={product.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
-                  <Package className="h-5 w-5 text-gray-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    {idx < 3 && (
-                      <span className="flex items-center justify-center h-5 w-5 rounded-full bg-[#D6A84F] text-white text-[10px] font-bold">
-                        {idx + 1}
-                      </span>
-                    )}
-                    <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                  </div>
-                  <p className="text-sm font-bold text-[#0F7A4F] mt-0.5">{formatMRU(product.price)}</p>
-                </div>
-                <Star className="h-4 w-4 text-[#D6A84F] fill-[#D6A84F] shrink-0" />
-              </div>
-            ))}
+      {/* CTA - Share Store Link */}
+      <Card className="rounded-xl border-[#0F7A4F]/20 bg-[#0F7A4F]/5 shadow-sm">
+        <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-center sm:text-right">
+            <p className="text-base font-bold text-gray-900">شارك رابط متجرك لاستقبال أول طلب</p>
+            <p className="text-xs text-gray-500 mt-1">أرسل الرابط لعملائك عبر واتساب أو وسائل التواصل الاجتماعي</p>
           </div>
+          <Button
+            className="bg-[#0F7A4F] hover:bg-[#0F7A4F]/90 text-white shrink-0"
+            onClick={() => setView('store-builder-preview')}
+          >
+            <Share2 className="h-4 w-4 ml-2" />
+            مشاركة الرابط
+          </Button>
         </CardContent>
       </Card>
     </div>
@@ -1479,6 +1585,30 @@ export default function MerchantDashboard() {
         return <DeliveryModule />;
       case 'automation':
         return <AutomationModule />;
+      case 'store-builder':
+        return <StoreBuilderMain />;
+      case 'store-builder-identity':
+        return <StoreBuilderIdentity />;
+      case 'store-builder-sections':
+        return <StoreBuilderSections />;
+      case 'store-builder-pages':
+        return <StoreBuilderPages />;
+      case 'store-builder-social':
+        return <StoreBuilderSocial />;
+      case 'store-builder-preview':
+        return <StoreBuilderPreview />;
+      case 'accounting':
+        return <AccountingMain />;
+      case 'accounting-overview':
+        return <AccountingOverview />;
+      case 'accounting-payment-methods':
+        return <AccountingPaymentMethods />;
+      case 'accounting-payment-review':
+        return <AccountingPaymentReview />;
+      case 'accounting-transactions':
+        return <AccountingTransactions />;
+      case 'accounting-reports':
+        return <AccountingReports />;
       default:
         return <DashboardOverview />;
     }

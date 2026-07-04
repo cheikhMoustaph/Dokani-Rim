@@ -1,0 +1,1391 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback } from 'react';
+     4→import { useApp } from '@/lib/store';
+     5→import { DEMO_STORES, DEMO_PRODUCTS, DEMO_CATEGORIES, formatMRU } from '@/lib/demo-data';
+     6→import type { DemoProduct, CartItem } from '@/lib/types';
+     7→import { cartItems as initialCart } from '@/lib/demo-data';
+     8→
+     9→import { Button } from '@/components/ui/button';
+    10→import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+    11→import { Badge } from '@/components/ui/badge';
+    12→import { Input } from '@/components/ui/input';
+    13→import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+    14→import { Separator } from '@/components/ui/separator';
+    15→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+    16→import { Textarea } from '@/components/ui/textarea';
+    17→import { Checkbox } from '@/components/ui/checkbox';
+    18→import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+    19→import { ScrollArea } from '@/components/ui/scroll-area';
+    20→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+    21→
+    22→import {
+    23→  Search, ShoppingBag, Plus, Minus, Trash2, X, Heart, Share2,
+    24→  MessageCircle, Phone, MapPin, Star, ChevronLeft, ChevronRight,
+    25→  Store, Truck, RotateCcw, Shield, Package, CreditCard, Filter,
+    26→  CheckCircle, Clock, Upload
+    27→} from 'lucide-react';
+    28→
+    29→// ─── Color Map for color circles ───
+    30→const COLOR_MAP: Record<string, string> = {
+    31→  'أسود': '#1a1a1a',
+    32→  'بيج': '#d4c5a9',
+    33→  'رمادي': '#9ca3af',
+    34→  'بني': '#8B4513',
+    35→  'عنابي': '#800020',
+    36→  'وردي': '#ec4899',
+    37→  'أزرق': '#3b82f6',
+    38→  'ذهبي': '#D6A84F',
+    39→  'أبيض': '#f5f5f5',
+    40→  'فضي': '#c0c0c0',
+    41→  'رمادي فاتح': '#d1d5db',
+    42→  'وردي فاتح': '#f9a8d4',
+    43→  'أزرق فاتح': '#93c5fd',
+    44→};
+    45→
+    46→const NOUAKCHOTT_NEIGHBORHOODS = [
+    47→  'تيارت زمبل',
+    48→  'لكصر',
+    49→  'سيدي محمود',
+    50→  'العيون',
+    51→  'تفرغ زينة',
+    52→  'سنهاجة',
+    53→  'الكفه',
+    54→  'أرفد',
+    55→  'العاصمة',
+    56→  'توجنين',
+    57→  'السبخة',
+    58→];
+    59→
+    60→export default function StorefrontPage() {
+    61→  const { currentView, viewParams, setView, goBack } = useApp();
+    62→
+    63→  // ─── Cart State ───
+    64→  const [cart, setCart] = useState<CartItem[]>([...initialCart]);
+    65→  const [cartOpen, setCartOpen] = useState(false);
+    66→  const [successOpen, setSuccessOpen] = useState(false);
+    67→  const [orderNumber] = useState('ORD-011');
+    68→
+    69→  // ─── Store & Product Data ───
+    70→  const store = DEMO_STORES.find(s => s.id === 's1')!;
+    71→  const storeCategories = DEMO_CATEGORIES.filter(c => c.storeId === 's1');
+    72→  const storeProducts = DEMO_PRODUCTS.filter(p => p.storeId === 's1');
+    73→
+    74→  // ─── Filter / Search State ───
+    75→  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    76→  const [searchQuery, setSearchQuery] = useState('');
+    77→
+    78→  // ─── Product Detail (derived, no sync needed) ───
+    79→  const currentProduct = currentView === 'storefront-product'
+    80→    ? DEMO_PRODUCTS.find(p => p.id === viewParams.productId) ?? null
+    81→    : null;
+    82→
+    83→  // ─── Checkout State ───
+    84→  const [checkoutForm, setCheckoutForm] = useState({
+    85→    name: '',
+    86→    phone: '',
+    87→    city: '',
+    88→    area: '',
+    89→    deliveryMethod: 'delivery' as 'delivery' | 'pickup',
+    90→    paymentMethod: 'cash' as 'cash' | 'manual_transfer',
+    91→    notes: '',
+    92→    agreePolicy: false,
+    93→  });
+    94→  const [proofFile, setProofFile] = useState<string | null>(null);
+    95→
+    96→  // ─── Filtered Products ───
+    97→  const filteredProducts = useMemo(() => {
+    98→    let products = storeProducts;
+    99→    if (selectedCategory) {
+   100→      products = products.filter(p => p.categoryId === selectedCategory);
+   101→    }
+   102→    if (searchQuery.trim()) {
+   103→      const q = searchQuery.trim().toLowerCase();
+   104→      products = products.filter(p =>
+   105→        p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+   106→      );
+   107→    }
+   108→    return products;
+   109→  }, [storeProducts, selectedCategory, searchQuery]);
+   110→
+   111→  // ─── Cart Functions ───
+   112→  const handleAddToCart = useCallback((product: DemoProduct, size?: string | null, color?: string | null) => {
+   113→    const selectedSize = size ?? (product.sizes.length > 0 ? product.sizes[0] : null);
+   114→    const selectedColor = color ?? (product.colors.length > 0 ? product.colors[0] : null);
+   115→
+   116→    setCart(prev => {
+   117→      const existing = prev.find(
+   118→        c => c.productId === product.id && c.size === selectedSize && c.color === selectedColor
+   119→      );
+   120→      if (existing) {
+   121→        return prev.map(c =>
+   122→          c.productId === product.id && c.size === selectedSize && c.color === selectedColor
+   123→            ? { ...c, quantity: c.quantity + 1 }
+   124→            : c
+   125→        );
+   126→      }
+   127→      return [...prev, {
+   128→        productId: product.id,
+   129→        name: product.name,
+   130→        price: product.price,
+   131→        quantity: 1,
+   132→        size: selectedSize,
+   133→        color: selectedColor,
+   134→        image: product.images[0] || '',
+   135→      }];
+   136→    });
+   137→  }, []);
+   138→
+   139→  const handleRemoveFromCart = useCallback((productId: string, size: string | null, color: string | null) => {
+   140→    setCart(prev => prev.filter(c => !(c.productId === productId && c.size === size && c.color === color)));
+   141→  }, []);
+   142→
+   143→  const handleUpdateQty = useCallback((productId: string, size: string | null, color: string | null, qty: number) => {
+   144→    if (qty < 1) return;
+   145→    setCart(prev => prev.map(c =>
+   146→      c.productId === productId && c.size === size && c.color === color
+   147→        ? { ...c, quantity: qty }
+   148→        : c
+   149→    ));
+   150→  }, []);
+   151→
+   152→  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+   153→  const cartSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+   154→
+   155→  const deliveryFee = checkoutForm.deliveryMethod === 'delivery' ? 200 : 0;
+   156→  const checkoutTotal = cartSubtotal + deliveryFee;
+   157→
+   158→  const handleCheckout = () => {
+   159→    if (!checkoutForm.name || !checkoutForm.phone || !checkoutForm.city || !checkoutForm.agreePolicy) return;
+   160→    if (checkoutForm.paymentMethod === 'manual_transfer' && !proofFile) return;
+   161→    setSuccessOpen(true);
+   162→  };
+   163→
+   164→  const handleSuccessClose = () => {
+   165→    setSuccessOpen(false);
+   166→    setCart([]);
+   167→    setCheckoutForm({
+   168→      name: '', phone: '', city: '', area: '',
+   169→      deliveryMethod: 'delivery', paymentMethod: 'cash',
+   170→      notes: '', agreePolicy: false,
+   171→    });
+   172→    setProofFile(null);
+   173→    goBack();
+   174→  };
+   175→
+   176→  // ─── Discount Calculator ───
+   177→  const getDiscount = (product: DemoProduct) => {
+   178→    if (!product.compareAtPrice) return 0;
+   179→    return Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100);
+   180→  };
+   181→
+   182→  // ═══════════════════════════════════════════════════════════
+   183→  // PRODUCT DETAIL VIEW
+   184→  // ═══════════════════════════════════════════════════════════
+   185→  if (currentView === 'storefront-product' && currentProduct) {
+   186→    return (
+   187→      <ProductDetailView
+   188→        product={currentProduct}
+   189→        cartCount={cartCount}
+   190→        cart={cart}
+   191→        cartOpen={cartOpen}
+   192→        onCartOpenChange={setCartOpen}
+   193→        onGoBack={goBack}
+   194→        onAddToCart={handleAddToCart}
+   195→        onUpdateCartQty={handleUpdateQty}
+   196→        onRemoveFromCart={handleRemoveFromCart}
+   197→        onGoCheckout={() => { setCartOpen(false); setView('storefront-checkout'); }}
+   198→        cartSubtotal={cartSubtotal}
+   199→        store={store}
+   200→      />
+   201→    );
+   202→  }
+   203→
+   204→  // ═══════════════════════════════════════════════════════════
+   205→  // CHECKOUT VIEW
+   206→  // ═══════════════════════════════════════════════════════════
+   207→  if (currentView === 'storefront-checkout') {
+   208→    return (
+   209→      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FAFAF7' }}>
+   210→        <TopBar cartCount={cartCount} onCartOpen={() => setCartOpen(true)} />
+   211→
+   212→        <main className="flex-1">
+   213→          <div className="max-w-5xl mx-auto px-4 py-6">
+   214→            {/* Back to cart */}
+   215→            <button
+   216→              onClick={goBack}
+   217→              className="flex items-center gap-2 text-sm mb-6 hover:underline"
+   218→              style={{ color: '#0F7A4F' }}
+   219→            >
+   220→              <ChevronRight className="h-4 w-4" />
+   221→              العودة للسلة
+   222→            </button>
+   223→
+   224→            <h1 className="text-2xl md:text-3xl font-bold mb-8 text-gray-900">
+   225→              إتمام الطلب
+   226→            </h1>
+   227→
+   228→            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+   229→              {/* Checkout Form */}
+   230→              <div className="lg:col-span-2">
+   231→                <Card className="border-0 shadow-sm rounded-2xl">
+   232→                  <CardHeader className="pb-4">
+   233→                    <CardTitle className="text-lg flex items-center gap-2">
+   234→                      <CreditCard className="h-5 w-5" style={{ color: '#0F7A4F' }} />
+   235→                      معلومات الشحن
+   236→                    </CardTitle>
+   237→                  </CardHeader>
+   238→                  <CardContent className="space-y-5">
+   239→                    {/* Full Name */}
+   240→                    <div>
+   241→                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+   242→                        الاسم الكامل <span className="text-red-500">*</span>
+   243→                      </label>
+   244→                      <Input
+   245→                        placeholder="أدخل اسمك الكامل"
+   246→                        value={checkoutForm.name}
+   247→                        onChange={e => setCheckoutForm(f => ({ ...f, name: e.target.value }))}
+   248→                        className="border-gray-200 rounded-xl h-11"
+   249→                      />
+   250→                    </div>
+   251→
+   252→                    {/* Phone */}
+   253→                    <div>
+   254→                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+   255→                        رقم الهاتف / واتساب <span className="text-red-500">*</span>
+   256→                      </label>
+   257→                      <Input
+   258→                        placeholder="مثال: 22XXXXXXXX"
+   259→                        value={checkoutForm.phone}
+   260→                        onChange={e => setCheckoutForm(f => ({ ...f, phone: e.target.value }))}
+   261→                        className="border-gray-200 rounded-xl h-11"
+   262→                        dir="ltr"
+   263→                      />
+   264→                    </div>
+   265→
+   266→                    {/* City */}
+   267→                    <div>
+   268→                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+   269→                        المدينة <span className="text-red-500">*</span>
+   270→                      </label>
+   271→                      <Select
+   272→                        value={checkoutForm.city}
+   273→                        onValueChange={v => setCheckoutForm(f => ({ ...f, city: v }))}
+   274→                      >
+   275→                        <SelectTrigger className="border-gray-200 rounded-xl h-11">
+   276→                          <SelectValue placeholder="اختر المدينة" />
+   277→                        </SelectTrigger>
+   278→                        <SelectContent>
+   279→                          {NOUAKCHOTT_NEIGHBORHOODS.map(n => (
+   280→                            <SelectItem key={n} value={n}>{n}</SelectItem>
+   281→                          ))}
+   282→                        </SelectContent>
+   283→                      </Select>
+   284→                    </div>
+   285→
+   286→                    {/* Area */}
+   287→                    <div>
+   288→                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+   289→                        المنطقة / الحي
+   290→                      </label>
+   291→                      <Input
+   292→                        placeholder="مثال: بجانب المسجد الكبير"
+   293→                        value={checkoutForm.area}
+   294→                        onChange={e => setCheckoutForm(f => ({ ...f, area: e.target.value }))}
+   295→                        className="border-gray-200 rounded-xl h-11"
+   296→                      />
+   297→                    </div>
+   298→
+   299→                    <Separator className="my-1" />
+   300→
+   301→                    {/* Delivery Method */}
+   302→                    <div>
+   303→                      <label className="block text-sm font-medium text-gray-700 mb-1.5">طريقة التوصيل</label>
+   304→                      <Select
+   305→                        value={checkoutForm.deliveryMethod}
+   306→                        onValueChange={v => setCheckoutForm(f => ({ ...f, deliveryMethod: v as 'delivery' | 'pickup' }))}
+   307→                      >
+   308→                        <SelectTrigger className="border-gray-200 rounded-xl h-11">
+   309→                          <SelectValue />
+   310→                        </SelectTrigger>
+   311→                        <SelectContent>
+   312→                          <SelectItem value="delivery">
+   313→                            <span className="flex items-center gap-2">
+   314→                              <Truck className="h-4 w-4" />
+   315→                              توصيل — 200 أوقية
+   316→                            </span>
+   317→                          </SelectItem>
+   318→                          <SelectItem value="pickup">
+   319→                            <span className="flex items-center gap-2">
+   320→                              <Store className="h-4 w-4" />
+   321→                              استلام من المتجر — مجاني
+   322→                            </span>
+   323→                          </SelectItem>
+   324→                        </SelectContent>
+   325→                      </Select>
+   326→                    </div>
+   327→
+   328→                    {/* Payment Method */}
+   329→                    <div>
+   330→                      <label className="block text-sm font-medium text-gray-700 mb-1.5">طريقة الدفع</label>
+   331→                      <Select
+   332→                        value={checkoutForm.paymentMethod}
+   333→                        onValueChange={v => setCheckoutForm(f => ({ ...f, paymentMethod: v as 'cash' | 'manual_transfer' }))}
+   334→                      >
+   335→                        <SelectTrigger className="border-gray-200 rounded-xl h-11">
+   336→                          <SelectValue />
+   337→                        </SelectTrigger>
+   338→                        <SelectContent>
+   339→                          <SelectItem value="cash">
+   340→                            <span className="flex items-center gap-2">
+   341→                              <CreditCard className="h-4 w-4" />
+   342→                              الدفع عند الاستلام
+   343→                            </span>
+   344→                          </SelectItem>
+   345→                          <SelectItem value="manual_transfer">
+   346→                            <span className="flex items-center gap-2">
+   347→                              <Phone className="h-4 w-4" />
+   348→                              تحويل يدوي
+   349→                            </span>
+   350→                          </SelectItem>
+   351→                        </SelectContent>
+   352→                      </Select>
+   353→                    </div>
+   354→
+   355→                    {/* Payment Proof Upload */}
+   356→                    {checkoutForm.paymentMethod === 'manual_transfer' && (
+   357→                      <div>
+   358→                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+   359→                          إثبات التحويل <span className="text-red-500">*</span>
+   360→                        </label>
+   361→                        <div
+   362→                          className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-green-400 transition-colors"
+   363→                          style={{ borderColor: proofFile ? '#0F7A4F' : '#d0d0c8' }}
+   364→                          onClick={() => setProofFile('receipt_uploaded.png')}
+   365→                        >
+   366→                          {proofFile ? (
+   367→                            <div className="flex flex-col items-center gap-2">
+   368→                              <CheckCircle className="h-10 w-10" style={{ color: '#0F7A4F' }} />
+   369→                              <p className="text-sm font-semibold" style={{ color: '#0F7A4F' }}>
+   370→                                تم رفع الإيصال بنجاح
+   371→                              </p>
+   372→                              <button
+   373→                                onClick={e => { e.stopPropagation(); setProofFile(null); }}
+   374→                                className="text-xs text-red-500 hover:underline"
+   375→                              >
+   376→                                حذف وإعادة الرفع
+   377→                              </button>
+   378→                            </div>
+   379→                          ) : (
+   380→                            <div className="flex flex-col items-center gap-2">
+   381→                              <Upload className="h-10 w-10 text-gray-400" />
+   382→                              <p className="text-sm text-gray-500">اضغط لرفع صورة إيصال التحويل</p>
+   383→                              <p className="text-xs text-gray-400">PNG, JPG حتى 5MB</p>
+   384→                            </div>
+   385→                          )}
+   386→                        </div>
+   387→                      </div>
+   388→                    )}
+   389→
+   390→                    <Separator className="my-1" />
+   391→
+   392→                    {/* Notes */}
+   393→                    <div>
+   394→                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+   395→                        ملاحظات الطلب <span className="text-gray-400 font-normal">(اختياري)</span>
+   396→                      </label>
+   397→                      <Textarea
+   398→                        placeholder="أي ملاحظات خاصة بالطلب..."
+   399→                        value={checkoutForm.notes}
+   400→                        onChange={e => setCheckoutForm(f => ({ ...f, notes: e.target.value }))}
+   401→                        className="border-gray-200 rounded-xl min-h-[90px] resize-none"
+   402→                      />
+   403→                    </div>
+   404→
+   405→                    {/* Policy Checkbox */}
+   406→                    <div className="flex items-start gap-3 pt-1">
+   407→                      <Checkbox
+   408→                        id="agree-policy"
+   409→                        checked={checkoutForm.agreePolicy}
+   410→                        onCheckedChange={v => setCheckoutForm(f => ({ ...f, agreePolicy: v === true }))}
+   411→                        className="mt-0.5"
+   412→                      />
+   413→                      <label htmlFor="agree-policy" className="text-sm text-gray-600 cursor-pointer leading-relaxed">
+   414→                        أوافق على{' '}
+   415→                        <span className="font-semibold" style={{ color: '#0F7A4F' }}>
+   416→                          سياسة الإرجاع والاستبدال
+   417→                        </span>
+   418→                      </label>
+   419→                    </div>
+   420→                  </CardContent>
+   421→                </Card>
+   422→              </div>
+   423→
+   424→              {/* Order Summary */}
+   425→              <div className="lg:col-span-1">
+   426→                <Card className="border-0 shadow-sm rounded-2xl lg:sticky lg:top-6">
+   427→                  <CardHeader className="pb-4">
+   428→                    <CardTitle className="text-lg flex items-center gap-2">
+   429→                      <ShoppingBag className="h-5 w-5" style={{ color: '#D6A84F' }} />
+   430→                      ملخص الطلب
+   431→                    </CardTitle>
+   432→                  </CardHeader>
+   433→                  <CardContent className="space-y-4">
+   434→                    <ScrollArea className="max-h-64 pr-2">
+   435→                      <div className="space-y-3">
+   436→                        {cart.map((item, idx) => (
+   437→                          <div key={idx} className="flex items-center gap-3">
+   438→                            <div
+   439→                              className="w-12 h-12 rounded-lg shrink-0 flex items-center justify-center"
+   440→                              style={{ backgroundColor: '#f0f0ec' }}
+   441→                            >
+   442→                              <Package className="h-5 w-5" style={{ color: '#c0c0b8' }} />
+   443→                            </div>
+   444→                            <div className="flex-1 min-w-0">
+   445→                              <p className="text-sm font-medium truncate text-gray-800">{item.name}</p>
+   446→                              <p className="text-xs text-gray-400">
+   447→                                {item.size && `المقاس: ${item.size}`}
+   448→                                {item.size && item.color && ' · '}
+   449→                                {item.color && `اللون: ${item.color}`}
+   450→                              </p>
+   451→                            </div>
+   452→                            <div className="text-left shrink-0">
+   453→                              <p className="text-sm font-semibold" style={{ color: '#0F7A4F' }}>{formatMRU(item.price)}</p>
+   454→                              <p className="text-xs text-gray-400">×{item.quantity}</p>
+   455→                            </div>
+   456→                          </div>
+   457→                        ))}
+   458→                      </div>
+   459→                    </ScrollArea>
+   460→
+   461→                    <Separator />
+   462→
+   463→                    <div className="space-y-2.5">
+   464→                      <div className="flex justify-between text-sm">
+   465→                        <span className="text-gray-500">المجموع الفرعي</span>
+   466→                        <span className="font-medium text-gray-800">{formatMRU(cartSubtotal)}</span>
+   467→                      </div>
+   468→                      <div className="flex justify-between text-sm">
+   469→                        <span className="text-gray-500">رسوم التوصيل</span>
+   470→                        <span className="font-medium text-gray-800">
+   471→                          {deliveryFee > 0 ? formatMRU(deliveryFee) : 'مجاني'}
+   472→                        </span>
+   473→                      </div>
+   474→                      <Separator />
+   475→                      <div className="flex justify-between text-lg font-bold">
+   476→                        <span className="text-gray-800">الإجمالي</span>
+   477→                        <span style={{ color: '#0F7A4F' }}>{formatMRU(checkoutTotal)}</span>
+   478→                      </div>
+   479→                    </div>
+   480→
+   481→                    <Button
+   482→                      size="lg"
+   483→                      className="w-full text-base font-bold py-6 rounded-xl transition-all duration-200 hover:opacity-90 mt-2"
+   484→                      style={{ backgroundColor: '#0F7A4F' }}
+   485→                      disabled={
+   486→                        !checkoutForm.name ||
+   487→                        !checkoutForm.phone ||
+   488→                        !checkoutForm.city ||
+   489→                        !checkoutForm.agreePolicy ||
+   490→                        (checkoutForm.paymentMethod === 'manual_transfer' && !proofFile)
+   491→                      }
+   492→                      onClick={handleCheckout}
+   493→                    >
+   494→                      تأكيد الطلب
+   495→                    </Button>
+   496→                  </CardContent>
+   497→                </Card>
+   498→              </div>
+   499→            </div>
+   500→          </div>
+   501→        </main>
+   502→
+   503→        {/* Success Dialog */}
+   504→        <Dialog open={successOpen} onOpenChange={setSuccessOpen}>
+   505→          <DialogContent className="text-center max-w-sm mx-auto rounded-2xl">
+   506→            <DialogHeader className="items-center pt-4">
+   507→              <div
+   508→                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+   509→                style={{ backgroundColor: '#ecfdf5' }}
+   510→              >
+   511→                <CheckCircle className="h-9 w-9" style={{ color: '#0F7A4F' }} />
+   512→              </div>
+   513→              <DialogTitle className="text-xl font-bold">تم استلام طلبك بنجاح!</DialogTitle>
+   514→              <DialogDescription className="text-sm text-gray-500 mt-2 leading-relaxed">
+   515→                رقم الطلب:{' '}
+   516→                <span className="font-bold text-gray-800 text-base">{orderNumber}</span>
+   517→                <br />
+   518→                سنتواصل معك قريباً لتأكيد الطلب.
+   519→              </DialogDescription>
+   520→            </DialogHeader>
+   521→            <DialogFooter className="sm:justify-center pb-6 pt-2">
+   522→              <Button
+   523→                className="px-10 py-5 rounded-xl text-base font-semibold"
+   524→                style={{ backgroundColor: '#0F7A4F' }}
+   525→                onClick={handleSuccessClose}
+   526→              >
+   527→                متابعة التسوق
+   528→              </Button>
+   529→            </DialogFooter>
+   530→          </DialogContent>
+   531→        </Dialog>
+   532→
+   533→        {/* Cart Sheet */}
+   534→        <CartSheet
+   535→          cart={cart}
+   536→          open={cartOpen}
+   537→          onOpenChange={setCartOpen}
+   538→          onUpdateQty={handleUpdateQty}
+   539→          onRemove={handleRemoveFromCart}
+   540→          onCheckout={() => { setCartOpen(false); setView('storefront-checkout'); }}
+   541→          subtotal={cartSubtotal}
+   542→        />
+   543→
+   544→        <StorefrontFooter store={store} />
+   545→      </div>
+   546→    );
+   547→  }
+   548→
+   549→  // ═══════════════════════════════════════════════════════════
+   550→  // MAIN STOREFRONT VIEW (Product Grid)
+   551→  // ═══════════════════════════════════════════════════════════
+   552→  return (
+   553→    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FAFAF7' }}>
+   554→      {/* Top Bar */}
+   555→      <TopBar cartCount={cartCount} onCartOpen={() => setCartOpen(true)} />
+   556→
+   557→      {/* Store Header */}
+   558→      <StoreHeader store={store} />
+   559→
+   560→      {/* Navigation: Categories + Search */}
+   561→      <nav className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b shadow-sm" style={{ borderColor: '#e8e8e0' }}>
+   562→        <div className="max-w-6xl mx-auto px-4">
+   563→          {/* Category Pills */}
+   564→          <div className="flex items-center gap-2 py-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+   565→            <style>{`.no-scrollbar::-webkit-scrollbar{display:none}`}</style>
+   566→            <button
+   567→              onClick={() => setSelectedCategory(null)}
+   568→              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+   569→                !selectedCategory
+   570→                  ? 'text-white shadow-md'
+   571→                  : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+   572→              }`}
+   573→              style={!selectedCategory ? { backgroundColor: '#0F7A4F' } : undefined}
+   574→            >
+   575→              الكل
+   576→            </button>
+   577→            {storeCategories.map(cat => (
+   578→              <button
+   579→                key={cat.id}
+   580→                onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+   581→                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+   582→                  selectedCategory === cat.id
+   583→                    ? 'text-white shadow-md'
+   584→                    : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+   585→                }`}
+   586→                style={selectedCategory === cat.id ? { backgroundColor: '#0F7A4F' } : undefined}
+   587→              >
+   588→                {cat.name}
+   589→              </button>
+   590→            ))}
+   591→          </div>
+   592→
+   593→          {/* Search Bar */}
+   594→          <div className="pb-3">
+   595→            <div className="relative">
+   596→              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   597→              <Input
+   598→                placeholder="ابحث عن منتج..."
+   599→                value={searchQuery}
+   600→                onChange={e => setSearchQuery(e.target.value)}
+   601→                className="pr-10 pl-10 border-gray-200 bg-gray-50/80 rounded-xl h-11"
+   602→              />
+   603→              {searchQuery && (
+   604→                <button
+   605→                  onClick={() => setSearchQuery('')}
+   606→                  className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
+   607→                >
+   608→                  <X className="h-3.5 w-3.5 text-gray-400" />
+   609→                </button>
+   610→              )}
+   611→            </div>
+   612→          </div>
+   613→        </div>
+   614→      </nav>
+   615→
+   616→      {/* Products Count */}
+   617→      <div className="max-w-6xl mx-auto w-full px-4 pt-6 pb-2">
+   618→        <p className="text-sm text-gray-500">
+   619→          {filteredProducts.length} منتج
+   620→          {selectedCategory && (
+   621→            <span>
+   622→              {' '}في{' '}
+   623→              <span className="font-semibold" style={{ color: '#0F7A4F' }}>
+   624→                {storeCategories.find(c => c.id === selectedCategory)?.name}
+   625→              </span>
+   626→            </span>
+   627→          )}
+   628→        </p>
+   629→      </div>
+   630→
+   631→      {/* Product Grid */}
+   632→      <main className="flex-1">
+   633→        <div className="max-w-6xl mx-auto px-4 pb-12">
+   634→          {filteredProducts.length > 0 ? (
+   635→            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+   636→              {filteredProducts.map(product => {
+   637→                const discount = getDiscount(product);
+   638→
+   639→                return (
+   640→                  <Card
+   641→                    key={product.id}
+   642→                    className="group border-0 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden rounded-xl"
+   643→                    style={{ backgroundColor: '#fff' }}
+   644→                    onClick={() => setView('storefront-product', { productId: product.id })}
+   645→                  >
+   646→                    {/* Image Placeholder */}
+   647→                    <div
+   648→                      className="relative h-40 sm:h-44 md:h-48 flex items-center justify-center overflow-hidden"
+   649→                      style={{ backgroundColor: '#f0f0ec' }}
+   650→                    >
+   651→                      <Package
+   652→                        className="h-11 w-11 md:h-12 md:w-12 transition-transform duration-300 group-hover:scale-110"
+   653→                        style={{ color: '#c0c0b8' }}
+   654→                      />
+   655→
+   656→                      {/* Badges */}
+   657→                      <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+   658→                        {product.isBestSeller && (
+   659→                          <Badge
+   660→                            className="text-[10px] px-2 py-0.5 shadow-sm"
+   661→                            style={{ backgroundColor: '#D6A84F', color: '#fff' }}
+   662→                          >
+   663→                            <Star className="h-2.5 w-2.5 ml-0.5" />
+   664→                            الأكثر مبيعاً
+   665→                          </Badge>
+   666→                        )}
+   667→                        {discount > 0 && (
+   668→                          <Badge className="text-[10px] px-2 py-0.5 bg-red-500 text-white shadow-sm">
+   669→                            -{discount}%
+   670→                          </Badge>
+   671→                        )}
+   672→                      </div>
+   673→
+   674→                      {/* Quick Actions */}
+   675→                      <div className="absolute bottom-2 left-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+   676→                        <button
+   677→                          className="w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors"
+   678→                          onClick={e => { e.stopPropagation(); }}
+   679→                          title="المفضلة"
+   680→                        >
+   681→                          <Heart className="h-3.5 w-3.5 text-gray-600" />
+   682→                        </button>
+   683→                        <button
+   684→                          className="w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors"
+   685→                          onClick={e => { e.stopPropagation(); }}
+   686→                          title="مشاركة"
+   687→                        >
+   688→                          <Share2 className="h-3.5 w-3.5 text-gray-600" />
+   689→                        </button>
+   690→                      </div>
+   691→                    </div>
+   692→
+   693→                    {/* Product Info */}
+   694→                    <div className="p-3 md:p-4">
+   695→                      <h3 className="font-semibold text-sm md:text-base text-gray-800 line-clamp-2 mb-2 leading-relaxed min-h-[2.5rem]">
+   696→                        {product.name}
+   697→                      </h3>
+   698→
+   699→                      {/* Price */}
+   700→                      <div className="flex items-baseline gap-2 mb-2.5">
+   701→                        <span className="font-bold text-base md:text-lg" style={{ color: '#0F7A4F' }}>
+   702→                          {formatMRU(product.price)}
+   703→                        </span>
+   704→                        {product.compareAtPrice && (
+   705→                          <span className="text-xs line-through text-gray-400">
+   706→                            {formatMRU(product.compareAtPrice)}
+   707→                          </span>
+   708→                        )}
+   709→                      </div>
+   710→
+   711→                      {/* Color dots */}
+   712→                      {product.colors.length > 0 && (
+   713→                        <div className="flex items-center gap-1.5 mb-3">
+   714→                          {product.colors.slice(0, 5).map(color => (
+   715→                            <span
+   716→                              key={color}
+   717→                              className="w-4 h-4 rounded-full border border-gray-200"
+   718→                              style={{ backgroundColor: COLOR_MAP[color] || '#ccc' }}
+   719→                              title={color}
+   720→                            />
+   721→                          ))}
+   722→                          {product.colors.length > 5 && (
+   723→                            <span className="text-[10px] text-gray-400">+{product.colors.length - 5}</span>
+   724→                          )}
+   725→                        </div>
+   726→                      )}
+   727→
+   728→                      {/* Add to Cart */}
+   729→                      <Button
+   730→                        size="sm"
+   731→                        className="w-full rounded-lg text-xs font-semibold py-2.5 transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+   732→                        style={{ backgroundColor: '#0F7A4F' }}
+   733→                        onClick={e => {
+   734→                          e.stopPropagation();
+   735→                          handleAddToCart(product);
+   736→                        }}
+   737→                      >
+   738→                        <Plus className="h-3.5 w-3.5 ml-1" />
+   739→                        أضف للسلة
+   740→                      </Button>
+   741→                    </div>
+   742→                  </Card>
+   743→                );
+   744→              })}
+   745→            </div>
+   746→          ) : (
+   747→            <div className="flex flex-col items-center justify-center py-24 text-center">
+   748→              <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5" style={{ backgroundColor: '#f0f0ec' }}>
+   749→                <Package className="h-10 w-10" style={{ color: '#c0c0b8' }} />
+   750→              </div>
+   751→              <p className="text-lg font-bold text-gray-700 mb-1">لا توجد منتجات</p>
+   752→              <p className="text-sm text-gray-400 max-w-xs">
+   753→                {searchQuery
+   754→                  ? 'لم نجد نتائج لبحثك. جرب كلمات مختلفة.'
+   755→                  : 'لا توجد منتجات في هذا التصنيف حالياً.'}
+   756→              </p>
+   757→              <Button
+   758→                variant="outline"
+   759→                className="mt-5 rounded-xl"
+   760→                onClick={() => { setSelectedCategory(null); setSearchQuery(''); }}
+   761→              >
+   762→                عرض جميع المنتجات
+   763→              </Button>
+   764→            </div>
+   765→          )}
+   766→        </div>
+   767→      </main>
+   768→
+   769→      {/* Cart Sheet */}
+   770→      <CartSheet
+   771→        cart={cart}
+   772→        open={cartOpen}
+   773→        onOpenChange={setCartOpen}
+   774→        onUpdateQty={handleUpdateQty}
+   775→        onRemove={handleRemoveFromCart}
+   776→        onCheckout={() => { setCartOpen(false); setView('storefront-checkout'); }}
+   777→        subtotal={cartSubtotal}
+   778→      />
+   779→
+   780→      {/* Footer */}
+   781→      <StorefrontFooter store={store} />
+   782→    </div>
+   783→  );
+   784→}
+   785→
+   786→// ════════════════════════════════════════════════════════════════
+   787→// SUB-COMPONENTS
+   788→// ════════════════════════════════════════════════════════════════
+   789→
+   790→// ─── Product Detail View (own state for qty/size/color) ───
+   791→function ProductDetailView({
+   792→  product,
+   793→  cartCount,
+   794→  cart,
+   795→  cartOpen,
+   796→  onCartOpenChange,
+   797→  onGoBack,
+   798→  onAddToCart,
+   799→  onUpdateCartQty,
+   800→  onRemoveFromCart,
+   801→  onGoCheckout,
+   802→  cartSubtotal,
+   803→  store,
+   804→}: {
+   805→  product: DemoProduct;
+   806→  cartCount: number;
+   807→  cart: CartItem[];
+   808→  cartOpen: boolean;
+   809→  onCartOpenChange: (open: boolean) => void;
+   810→  onGoBack: () => void;
+   811→  onAddToCart: (product: DemoProduct, size?: string | null, color?: string | null) => void;
+   812→  onUpdateCartQty: (productId: string, size: string | null, color: string | null, qty: number) => void;
+   813→  onRemoveFromCart: (productId: string, size: string | null, color: string | null) => void;
+   814→  onGoCheckout: () => void;
+   815→  cartSubtotal: number;
+   816→  store: { name: string; whatsapp: string };
+   817→}) {
+   818→  const [detailQty, setDetailQty] = useState(1);
+   819→  const [detailSize, setDetailSize] = useState<string | null>(
+   820→    product.sizes.length > 0 ? product.sizes[0] : null
+   821→  );
+   822→  const [detailColor, setDetailColor] = useState<string | null>(
+   823→    product.colors.length > 0 ? product.colors[0] : null
+   824→  );
+   825→
+   826→  const discount = product.compareAtPrice
+   827→    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+   828→    : 0;
+   829→
+   830→  const openWhatsApp = () => {
+   831→    const msg = `مرحباً، أريد طلب المنتج التالي:\n\n📦 ${product.name}\n💰 ${formatMRU(product.price)}\n\nشكراً!`;
+   832→    window.open(`https://wa.me/22222333?text=${encodeURIComponent(msg)}`, '_blank');
+   833→  };
+   834→
+   835→  return (
+   836→    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FAFAF7' }}>
+   837→      <TopBar cartCount={cartCount} onCartOpen={() => onCartOpenChange(true)} />
+   838→
+   839→      <main className="flex-1">
+   840→        <div className="max-w-5xl mx-auto px-4 py-6">
+   841→          <button
+   842→            onClick={onGoBack}
+   843→            className="flex items-center gap-2 text-sm mb-6 hover:underline"
+   844→            style={{ color: '#0F7A4F' }}
+   845→          >
+   846→            <ChevronRight className="h-4 w-4" />
+   847→            العودة للمنتجات
+   848→          </button>
+   849→
+   850→          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+   851→            {/* Product Image Placeholder */}
+   852→            <div
+   853→              className="w-full h-64 sm:h-80 md:h-[420px] rounded-2xl flex items-center justify-center"
+   854→              style={{ backgroundColor: '#f0f0ec' }}
+   855→            >
+   856→              <Package className="h-20 w-20" style={{ color: '#c0c0b8' }} />
+   857→            </div>
+   858→
+   859→            {/* Product Info */}
+   860→            <div className="flex flex-col gap-5">
+   861→              {product.isBestSeller && (
+   862→                <Badge className="w-fit text-xs" style={{ backgroundColor: '#D6A84F', color: '#fff' }}>
+   863→                  <Star className="h-3 w-3 ml-1" />
+   864→                  الأكثر مبيعاً
+   865→                </Badge>
+   866→              )}
+   867→
+   868→              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{product.name}</h1>
+   869→
+   870→              <div className="flex items-center gap-3 flex-wrap">
+   871→                <span className="text-2xl md:text-3xl font-bold" style={{ color: '#0F7A4F' }}>
+   872→                  {formatMRU(product.price)}
+   873→                </span>
+   874→                {product.compareAtPrice && (
+   875→                  <span className="text-lg line-through text-gray-400">{formatMRU(product.compareAtPrice)}</span>
+   876→                )}
+   877→                {discount > 0 && (
+   878→                  <Badge variant="secondary" className="bg-red-100 text-red-700 text-xs">وفر {discount}%</Badge>
+   879→                )}
+   880→              </div>
+   881→
+   882→              <Separator />
+   883→
+   884→              {/* Size Selector */}
+   885→              {product.sizes.length > 0 && (
+   886→                <div>
+   887→                  <p className="text-sm font-semibold mb-3 text-gray-700">المقاس</p>
+   888→                  <div className="flex flex-wrap gap-2">
+   889→                    {product.sizes.map(size => (
+   890→                      <Button
+   891→                        key={size}
+   892→                        variant={detailSize === size ? 'default' : 'outline'}
+   893→                        onClick={() => setDetailSize(size)}
+   894→                        className={detailSize === size ? '' : 'border-gray-300 hover:border-gray-400'}
+   895→                        style={detailSize === size ? { backgroundColor: '#0F7A4F', borderColor: '#0F7A4F' } : undefined}
+   896→                      >
+   897→                        {size}
+   898→                      </Button>
+   899→                    ))}
+   900→                  </div>
+   901→                </div>
+   902→              )}
+   903→
+   904→              {/* Color Selector */}
+   905→              {product.colors.length > 0 && (
+   906→                <div>
+   907→                  <p className="text-sm font-semibold mb-3 text-gray-700">
+   908→                    اللون{detailColor ? ` — ${detailColor}` : ''}
+   909→                  </p>
+   910→                  <div className="flex flex-wrap gap-3">
+   911→                    {product.colors.map(color => (
+   912→                      <button
+   913→                        key={color}
+   914→                        onClick={() => setDetailColor(color)}
+   915→                        className="w-9 h-9 rounded-full transition-all duration-150 hover:scale-110"
+   916→                        style={{
+   917→                          backgroundColor: COLOR_MAP[color] || '#ccc',
+   918→                          outline: detailColor === color ? '3px solid #0F7A4F' : 'none',
+   919→                          outlineOffset: '2px',
+   920→                        }}
+   921→                        title={color}
+   922→                      />
+   923→                    ))}
+   924→                  </div>
+   925→                </div>
+   926→              )}
+   927→
+   928→              {/* Quantity Selector */}
+   929→              <div>
+   930→                <p className="text-sm font-semibold mb-3 text-gray-700">الكمية</p>
+   931→                <div className="flex items-center border rounded-lg w-fit overflow-hidden" style={{ borderColor: '#e0e0d8' }}>
+   932→                  <button
+   933→                    onClick={() => setDetailQty(q => Math.max(1, q - 1))}
+   934→                    className="w-11 h-11 flex items-center justify-center hover:bg-gray-100 transition-colors"
+   935→                  >
+   936→                    <Minus className="h-4 w-4 text-gray-600" />
+   937→                  </button>
+   938→                  <span className="w-14 h-11 flex items-center justify-center font-semibold text-base border-x" style={{ borderColor: '#e0e0d8' }}>
+   939→                    {detailQty}
+   940→                  </span>
+   941→                  <button
+   942→                    onClick={() => setDetailQty(q => q + 1)}
+   943→                    className="w-11 h-11 flex items-center justify-center hover:bg-gray-100 transition-colors"
+   944→                  >
+   945→                    <Plus className="h-4 w-4 text-gray-600" />
+   946→                  </button>
+   947→                </div>
+   948→              </div>
+   949→
+   950→              {/* Add to Cart */}
+   951→              <Button
+   952→                size="lg"
+   953→                className="w-full text-base font-semibold py-6 rounded-xl transition-all duration-200 hover:opacity-90 mt-2"
+   954→                style={{ backgroundColor: '#0F7A4F' }}
+   955→                onClick={() => {
+   956→                  for (let i = 0; i < detailQty; i++) {
+   957→                    onAddToCart(product, detailSize, detailColor);
+   958→                  }
+   959→                  setDetailQty(1);
+   960→                  onCartOpenChange(true);
+   961→                }}
+   962→              >
+   963→                <ShoppingBag className="h-5 w-5 ml-2" />
+   964→                أضف للسلة — {formatMRU(product.price * detailQty)}
+   965→              </Button>
+   966→
+   967→              {/* WhatsApp */}
+   968→              <Button
+   969→                size="lg"
+   970→                variant="outline"
+   971→                className="w-full text-base font-semibold py-6 rounded-xl transition-all duration-200"
+   972→                style={{ borderColor: '#25D366', color: '#25D366' }}
+   973→                onClick={openWhatsApp}
+   974→              >
+   975→                <MessageCircle className="h-5 w-5 ml-2" />
+   976→                اطلب عبر واتساب
+   977→              </Button>
+   978→
+   979→              {/* Tabs */}
+   980→              <Tabs defaultValue="description" className="mt-4">
+   981→                <TabsList className="w-full bg-gray-100/60 h-11">
+   982→                  <TabsTrigger value="description" className="flex-1 text-sm data-[state=active]:shadow-sm">الوصف</TabsTrigger>
+   983→                  <TabsTrigger value="delivery" className="flex-1 text-sm data-[state=active]:shadow-sm">التوصيل</TabsTrigger>
+   984→                  <TabsTrigger value="returns" className="flex-1 text-sm data-[state=active]:shadow-sm">سياسة الإرجاع</TabsTrigger>
+   985→                </TabsList>
+   986→                <TabsContent value="description" className="mt-4">
+   987→                  <div className="p-4 rounded-xl bg-white">
+   988→                    <p className="text-gray-600 leading-relaxed text-sm">{product.description}</p>
+   989→                    {product.sku && (
+   990→                      <p className="text-xs text-gray-400 mt-3">رمز المنتج: {product.sku}</p>
+   991→                    )}
+   992→                  </div>
+   993→                </TabsContent>
+   994→                <TabsContent value="delivery" className="mt-4">
+   995→                  <div className="p-4 rounded-xl bg-white space-y-4">
+   996→                    <div className="flex items-start gap-3">
+   997→                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#ecfdf5' }}>
+   998→                        <Truck className="h-4 w-4" style={{ color: '#0F7A4F' }} />
+   999→                      </div>
+  1000→                      <div>
+  1001→                        <p className="font-semibold text-sm text-gray-800">توصيل داخل نواكشوط</p>
+  1002→                        <p className="text-xs text-gray-500 mt-0.5">التوصيل خلال 24-48 ساعة. رسوم التوصيل 200 أوقية.</p>
+  1003→                      </div>
+  1004→                    </div>
+  1005→                    <div className="flex items-start gap-3">
+  1006→                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#ecfdf5' }}>
+  1007→                        <Store className="h-4 w-4" style={{ color: '#0F7A4F' }} />
+  1008→                      </div>
+  1009→                      <div>
+  1010→                        <p className="font-semibold text-sm text-gray-800">استلام من المتجر</p>
+  1011→                        <p className="text-xs text-gray-500 mt-0.5">يمكنك استلام طلبك مجاناً من المتجر مباشرة.</p>
+  1012→                      </div>
+  1013→                    </div>
+  1014→                  </div>
+  1015→                </TabsContent>
+  1016→                <TabsContent value="returns" className="mt-4">
+  1017→                  <div className="p-4 rounded-xl bg-white space-y-4">
+  1018→                    <div className="flex items-start gap-3">
+  1019→                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#fef9ec' }}>
+  1020→                        <RotateCcw className="h-4 w-4" style={{ color: '#D6A84F' }} />
+  1021→                      </div>
+  1022→                      <div>
+  1023→                        <p className="font-semibold text-sm text-gray-800">إرجاع واستبدال</p>
+  1024→                        <p className="text-xs text-gray-500 mt-0.5">يمكنك إرجاع المنتج خلال 3 أيام من الاستلام بشرط أن يكون في حالته الأصلية.</p>
+  1025→                      </div>
+  1026→                    </div>
+  1027→                    <div className="flex items-start gap-3">
+  1028→                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#ecfdf5' }}>
+  1029→                        <Shield className="h-4 w-4" style={{ color: '#0F7A4F' }} />
+  1030→                      </div>
+  1031→                      <div>
+  1032→                        <p className="font-semibold text-sm text-gray-800">ضمان الجودة</p>
+  1033→                        <p className="text-xs text-gray-500 mt-0.5">جميع منتجاتنا أصلية ومضمونة الجودة 100%.</p>
+  1034→                      </div>
+  1035→                    </div>
+  1036→                  </div>
+  1037→                </TabsContent>
+  1038→              </Tabs>
+  1039→            </div>
+  1040→          </div>
+  1041→        </div>
+  1042→      </main>
+  1043→
+  1044→      <CartSheet
+  1045→        cart={cart}
+  1046→        open={cartOpen}
+  1047→        onOpenChange={onCartOpenChange}
+  1048→        onUpdateQty={onUpdateCartQty}
+  1049→        onRemove={onRemoveFromCart}
+  1050→        onCheckout={onGoCheckout}
+  1051→        subtotal={cartSubtotal}
+  1052→      />
+  1053→
+  1054→      <StorefrontFooter store={store} />
+  1055→    </div>
+  1056→  );
+  1057→}
+  1058→
+  1059→// ─── Top Bar ───
+  1060→function TopBar({ cartCount, onCartOpen }: { cartCount: number; onCartOpen: () => void }) {
+  1061→  return (
+  1062→    <div className="bg-white border-b" style={{ borderColor: '#e8e8e0' }}>
+  1063→      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+  1064→        {/* Logo */}
+  1065→        <span className="text-lg font-bold tracking-tight" style={{ color: '#0F7A4F' }}>
+  1066→          دكاني
+  1067→        </span>
+  1068→
+  1069→        <div className="flex items-center gap-3">
+  1070→          {/* Create Store Link */}
+  1071→          <a
+  1072→            href="#"
+  1073→            className="hidden sm:inline-flex text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+  1074→          >
+  1075→            إنشاء متجرك
+  1076→          </a>
+  1077→
+  1078→          {/* Cart Button */}
+  1079→          <button
+  1080→            onClick={onCartOpen}
+  1081→            className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors"
+  1082→            aria-label="سلة التسوق"
+  1083→          >
+  1084→            <ShoppingBag className="h-5 w-5 text-gray-700" />
+  1085→            {cartCount > 0 && (
+  1086→              <span
+  1087→                className="absolute -top-0.5 -left-0.5 min-w-[20px] h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1"
+  1088→                style={{ backgroundColor: '#0F7A4F' }}
+  1089→              >
+  1090→                {cartCount > 99 ? '99+' : cartCount}
+  1091→              </span>
+  1092→            )}
+  1093→          </button>
+  1094→        </div>
+  1095→      </div>
+  1096→    </div>
+  1097→  );
+  1098→}
+  1099→
+  1100→// ─── Store Header ───
+  1101→function StoreHeader({ store }: { store: { name: string; description: string; phone: string; whatsapp: string; city: string } }) {
+  1102→  return (
+  1103→    <div>
+  1104→      {/* Hero Banner */}
+  1105→      <div
+  1106→        className="relative overflow-hidden"
+  1107→        style={{
+  1108→          background: 'linear-gradient(135deg, #0F7A4F 0%, #0a5c3b 60%, #0d6e47 100%)',
+  1109→        }}
+  1110→      >
+  1111→        {/* Decorative pattern */}
+  1112→        <div className="absolute inset-0 opacity-[0.07] pointer-events-none">
+  1113→          <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full border-2 border-white" />
+  1114→          <div className="absolute -bottom-4 right-10 w-56 h-56 rounded-full border-2 border-white" />
+  1115→          <div className="absolute top-1/2 left-1/4 w-24 h-24 rounded-full border-2 border-white" />
+  1116→          <div className="absolute top-1/4 right-1/3 w-16 h-16 rounded-full border border-white" />
+  1117→          <div className="absolute bottom-1/4 left-1/2 w-32 h-32 rounded-full border border-white" />
+  1118→        </div>
+  1119→
+  1120→        <div className="relative max-w-6xl mx-auto px-4 py-14 md:py-20 text-center">
+  1121→          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 tracking-tight">
+  1122→            {store.name}
+  1123→          </h1>
+  1124→          <p className="text-white/75 text-sm md:text-base max-w-lg mx-auto leading-relaxed">
+  1125→            {store.description}
+  1126→          </p>
+  1127→          <div className="flex items-center justify-center gap-3 mt-6">
+  1128→            <a
+  1129→              href={`https://wa.me/${store.whatsapp}`}
+  1130→              target="_blank"
+  1131→              rel="noopener noreferrer"
+  1132→              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/15 backdrop-blur-sm text-white text-sm font-medium hover:bg-white/25 transition-colors"
+  1133→            >
+  1134→              <MessageCircle className="h-4 w-4" />
+  1135→              تواصل عبر واتساب
+  1136→            </a>
+  1137→          </div>
+  1138→        </div>
+  1139→      </div>
+  1140→
+  1141→      {/* Store Info Bar */}
+  1142→      <div className="bg-white border-b" style={{ borderColor: '#e8e8e0' }}>
+  1143→        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-600">
+  1144→          <a
+  1145→            href={`tel:${store.phone}`}
+  1146→            className="flex items-center gap-2 hover:text-gray-900 transition-colors"
+  1147→          >
+  1148→            <Phone className="h-4 w-4" style={{ color: '#0F7A4F' }} />
+  1149→            <span dir="ltr">{store.phone}</span>
+  1150→          </a>
+  1151→          <a
+  1152→            href={`https://wa.me/${store.whatsapp}`}
+  1153→            target="_blank"
+  1154→            rel="noopener noreferrer"
+  1155→            className="flex items-center gap-2 hover:text-gray-900 transition-colors"
+  1156→          >
+  1157→            <MessageCircle className="h-4 w-4" style={{ color: '#25D366' }} />
+  1158→            <span>واتساب</span>
+  1159→          </a>
+  1160→          <div className="flex items-center gap-2">
+  1161→            <MapPin className="h-4 w-4" style={{ color: '#D6A84F' }} />
+  1162→            <span>{store.city}</span>
+  1163→          </div>
+  1164→        </div>
+  1165→      </div>
+  1166→    </div>
+  1167→  );
+  1168→}
+  1169→
+  1170→// ─── Cart Sheet ───
+  1171→function CartSheet({
+  1172→  cart,
+  1173→  open,
+  1174→  onOpenChange,
+  1175→  onUpdateQty,
+  1176→  onRemove,
+  1177→  onCheckout,
+  1178→  subtotal,
+  1179→}: {
+  1180→  cart: CartItem[];
+  1181→  open: boolean;
+  1182→  onOpenChange: (open: boolean) => void;
+  1183→  onUpdateQty: (productId: string, size: string | null, color: string | null, qty: number) => void;
+  1184→  onRemove: (productId: string, size: string | null, color: string | null) => void;
+  1185→  onCheckout: () => void;
+  1186→  subtotal: number;
+  1187→}) {
+  1188→  return (
+  1189→    <Sheet open={open} onOpenChange={onOpenChange}>
+  1190→      <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col rounded-r-2xl" style={{ backgroundColor: '#FAFAF7' }}>
+  1191→        <SheetHeader className="px-6 py-4 border-b bg-white" style={{ borderColor: '#e8e8e0' }}>
+  1192→          <div className="flex items-center justify-between w-full">
+  1193→            <SheetTitle className="flex items-center gap-2.5 text-lg font-bold text-gray-900">
+  1194→              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#ecfdf5' }}>
+  1195→                <ShoppingBag className="h-4 w-4" style={{ color: '#0F7A4F' }} />
+  1196→              </div>
+  1197→              سلة التسوق
+  1198→              {cart.length > 0 && (
+  1199→                <Badge className="mr-1 text-xs px-1.5" style={{ backgroundColor: '#0F7A4F' }}>
+  1200→                  {cart.reduce((s, i) => s + i.quantity, 0)}
+  1201→                </Badge>
+  1202→              )}
+  1203→            </SheetTitle>
+  1204→          </div>
+  1205→        </SheetHeader>
+  1206→
+  1207→        {cart.length === 0 ? (
+  1208→          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
+  1209→            <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: '#f0f0ec' }}>
+  1210→              <ShoppingBag className="h-10 w-10" style={{ color: '#c0c0b8' }} />
+  1211→            </div>
+  1212→            <div className="text-center">
+  1213→              <p className="font-bold text-gray-700">السلة فارغة</p>
+  1214→              <p className="text-sm text-gray-400 mt-1">أضف بعض المنتجات لبدء التسوق</p>
+  1215→            </div>
+  1216→            <Button
+  1217→              variant="outline"
+  1218→              className="mt-1 rounded-xl"
+  1219→              onClick={() => onOpenChange(false)}
+  1220→            >
+  1221→              متابعة التسوق
+  1222→            </Button>
+  1223→          </div>
+  1224→        ) : (
+  1225→          <>
+  1226→            <ScrollArea className="flex-1">
+  1227→              <div className="px-4 py-4 space-y-3">
+  1228→                {cart.map((item, idx) => (
+  1229→                  <div
+  1230→                    key={`${item.productId}-${item.size}-${item.color}-${idx}`}
+  1231→                    className="flex gap-3 bg-white rounded-xl p-3 shadow-sm"
+  1232→                  >
+  1233→                    {/* Image placeholder */}
+  1234→                    <div
+  1235→                      className="w-16 h-16 rounded-lg shrink-0 flex items-center justify-center"
+  1236→                      style={{ backgroundColor: '#f0f0ec' }}
+  1237→                    >
+  1238→                      <Package className="h-6 w-6" style={{ color: '#c0c0b8' }} />
+  1239→                    </div>
+  1240→
+  1241→                    <div className="flex-1 min-w-0">
+  1242→                      <div className="flex items-start justify-between gap-2">
+  1243→                        <h4 className="text-sm font-semibold text-gray-800 line-clamp-1">{item.name}</h4>
+  1244→                        <button
+  1245→                          onClick={() => onRemove(item.productId, item.size, item.color)}
+  1246→                          className="shrink-0 p-1 rounded-md hover:bg-red-50 transition-colors"
+  1247→                          aria-label="حذف"
+  1248→                        >
+  1249→                          <Trash2 className="h-3.5 w-3.5 text-red-400 hover:text-red-600" />
+  1250→                        </button>
+  1251→                      </div>
+  1252→
+  1253→                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+  1254→                        {item.size && (
+  1255→                          <span className="text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+  1256→                            {item.size}
+  1257→                          </span>
+  1258→                        )}
+  1259→                        {item.color && (
+  1260→                          <span className="text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+  1261→                            {item.color}
+  1262→                          </span>
+  1263→                        )}
+  1264→                      </div>
+  1265→
+  1266→                      <div className="flex items-center justify-between mt-2">
+  1267→                        <div className="flex items-center border rounded-lg overflow-hidden" style={{ borderColor: '#e0e0d8' }}>
+  1268→                          <button
+  1269→                            onClick={() => onUpdateQty(item.productId, item.size, item.color, item.quantity - 1)}
+  1270→                            className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 transition-colors"
+  1271→                            aria-label="تقليل الكمية"
+  1272→                          >
+  1273→                            <Minus className="h-3 w-3 text-gray-500" />
+  1274→                          </button>
+  1275→                          <span className="w-8 h-7 flex items-center justify-center text-xs font-semibold border-x" style={{ borderColor: '#e0e0d8' }}>
+  1276→                            {item.quantity}
+  1277→                          </span>
+  1278→                          <button
+  1279→                            onClick={() => onUpdateQty(item.productId, item.size, item.color, item.quantity + 1)}
+  1280→                            className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 transition-colors"
+  1281→                            aria-label="زيادة الكمية"
+  1282→                          >
+  1283→                            <Plus className="h-3 w-3 text-gray-500" />
+  1284→                          </button>
+  1285→                        </div>
+  1286→                        <span className="text-sm font-bold" style={{ color: '#0F7A4F' }}>
+  1287→                          {formatMRU(item.price * item.quantity)}
+  1288→                        </span>
+  1289→                      </div>
+  1290→                    </div>
+  1291→                  </div>
+  1292→                ))}
+  1293→              </div>
+  1294→            </ScrollArea>
+  1295→
+  1296→            {/* Cart Footer */}
+  1297→            <div className="border-t px-5 py-4 bg-white rounded-t-2xl" style={{ borderColor: '#e8e8e0' }}>
+  1298→              <div className="flex justify-between items-center mb-4">
+  1299→                <span className="text-sm text-gray-500">المجموع الفرعي</span>
+  1300→                <span className="text-lg font-bold" style={{ color: '#0F7A4F' }}>
+  1301→                  {formatMRU(subtotal)}
+  1302→                </span>
+  1303→              </div>
+  1304→              <Button
+  1305→                size="lg"
+  1306→                className="w-full font-bold py-6 rounded-xl transition-all duration-200 hover:opacity-90 text-base"
+  1307→                style={{ backgroundColor: '#0F7A4F' }}
+  1308→                onClick={onCheckout}
+  1309→              >
+  1310→                إتمام الطلب
+  1311→              </Button>
+  1312→              <button
+  1313→                className="w-full text-center text-sm mt-3 font-medium hover:underline"
+  1314→                style={{ color: '#0F7A4F' }}
+  1315→                onClick={() => onOpenChange(false)}
+  1316→              >
+  1317→                متابعة التسوق
+  1318→              </button>
+  1319→            </div>
+  1320→          </>
+  1321→        )}
+  1322→      </SheetContent>
+  1323→    </Sheet>
+  1324→  );
+  1325→}
+  1326→
+  1327→// ─── Footer ───
+  1328→function StorefrontFooter({ store }: { store: { name: string; whatsapp: string } }) {
+  1329→  return (
+  1330→    <footer className="bg-white border-t mt-auto" style={{ borderColor: '#e8e8e0' }}>
+  1331→      <div className="max-w-6xl mx-auto px-4 py-8">
+  1332→        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
+  1333→          {/* Store Info */}
+  1334→          <div>
+  1335→            <h3 className="font-bold text-base mb-3" style={{ color: '#0F7A4F' }}>{store.name}</h3>
+  1336→            <a
+  1337→              href={`https://wa.me/${store.whatsapp}`}
+  1338→              target="_blank"
+  1339→              rel="noopener noreferrer"
+  1340→              className="inline-flex items-center gap-2 text-sm hover:underline transition-colors"
+  1341→              style={{ color: '#25D366' }}
+  1342→            >
+  1343→              <MessageCircle className="h-4 w-4" />
+  1344→              تواصل معنا عبر واتساب
+  1345→            </a>
+  1346→          </div>
+  1347→
+  1348→          {/* Delivery Info */}
+  1349→          <div>
+  1350→            <h4 className="font-semibold text-sm text-gray-800 mb-3">التوصيل</h4>
+  1351→            <ul className="space-y-2 text-xs text-gray-500">
+  1352→              <li className="flex items-center gap-2">
+  1353→                <Truck className="h-3.5 w-3.5 shrink-0" style={{ color: '#0F7A4F' }} />
+  1354→                توصيل داخل نواكشوط
+  1355→              </li>
+  1356→              <li className="flex items-center gap-2">
+  1357→                <Clock className="h-3.5 w-3.5 shrink-0" style={{ color: '#D6A84F' }} />
+  1358→                خلال 24-48 ساعة
+  1359→              </li>
+  1360→            </ul>
+  1361→          </div>
+  1362→
+  1363→          {/* Return Policy */}
+  1364→          <div>
+  1365→            <h4 className="font-semibold text-sm text-gray-800 mb-3">سياسة الإرجاع</h4>
+  1366→            <ul className="space-y-2 text-xs text-gray-500">
+  1367→              <li className="flex items-center gap-2">
+  1368→                <RotateCcw className="h-3.5 w-3.5 shrink-0" style={{ color: '#0F7A4F' }} />
+  1369→                إرجاع خلال 3 أيام
+  1370→              </li>
+  1371→              <li className="flex items-center gap-2">
+  1372→                <Shield className="h-3.5 w-3.5 shrink-0" style={{ color: '#D6A84F' }} />
+  1373→                ضمان الجودة
+  1374→              </li>
+  1375→            </ul>
+  1376→          </div>
+  1377→        </div>
+  1378→
+  1379→        <Separator className="my-6" />
+  1380→
+  1381→        <div className="text-center text-xs text-gray-400">
+  1382→          بدعم من{' '}
+  1383→          <span className="font-bold" style={{ color: '#0F7A4F' }}>
+  1384→            دكاني
+  1385→          </span>{' '}
+  1386→          — منصة التجارة الإلكترونية في موريتانيا
+  1387→        </div>
+  1388→      </div>
+  1389→    </footer>
+  1390→  );
+  1391→}

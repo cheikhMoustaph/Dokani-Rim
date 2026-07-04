@@ -181,6 +181,198 @@ export interface CartItem {
   image: string;
 }
 
+// ============ PAYMENT METHODS ============
+
+export type PaymentMethodType = 'bankily' | 'sedad' | 'masrvi' | 'bim_bank' | 'click' | 'cash' | 'other';
+
+export interface DemoPaymentMethod {
+  id: string;
+  storeId: string;
+  name: string;
+  type: PaymentMethodType;
+  logoUrl: string | null;
+  accountName: string | null;
+  accountNumber: string | null;
+  instructions: string | null;
+  isActive: boolean;
+  isDefault: boolean;
+  sortOrder: number;
+}
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethodType, string> = {
+  bankily: 'Bankily',
+  sedad: 'Sedad',
+  masrvi: 'Masrvi',
+  bim_bank: 'BIM Bank',
+  click: 'Click',
+  cash: 'الدفع عند الاستلام',
+  other: 'تحويل يدوي آخر',
+};
+
+export const PAYMENT_METHOD_COLORS: Record<PaymentMethodType, string> = {
+  bankily: 'bg-orange-100 text-orange-800',
+  sedad: 'bg-blue-100 text-blue-800',
+  masrvi: 'bg-green-100 text-green-800',
+  bim_bank: 'bg-purple-100 text-purple-800',
+  click: 'bg-cyan-100 text-cyan-800',
+  cash: 'bg-gray-100 text-gray-800',
+  other: 'bg-yellow-100 text-yellow-800',
+};
+
+// ============ PAYMENT RECEIPTS ============
+
+export type ReceiptStatus = 'waiting_confirmation' | 'paid' | 'rejected' | 'refunded';
+
+export const RECEIPT_STATUS_LABELS: Record<ReceiptStatus, string> = {
+  waiting_confirmation: 'بانتظار التأكيد',
+  paid: 'مدفوع',
+  rejected: 'مرفوض',
+  refunded: 'مسترد',
+};
+
+export const RECEIPT_STATUS_COLORS: Record<ReceiptStatus, string> = {
+  waiting_confirmation: 'bg-yellow-100 text-yellow-800',
+  paid: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  refunded: 'bg-purple-100 text-purple-800',
+};
+
+export interface DemoPaymentReceipt {
+  id: string;
+  storeId: string;
+  orderId: string | null;
+  customerId: string | null;
+  paymentMethodId: string;
+  paymentMethodName: string;
+  receiptUrl: string | null;
+  referenceNumber: string | null;
+  amount: number;
+  status: ReceiptStatus;
+  customerNote: string | null;
+  merchantNote: string | null;
+  customerName: string;
+  orderNumber: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
+// ============ ACCOUNTING TRANSACTIONS ============
+
+export type TransactionType = 'sale_income' | 'manual_payment' | 'cash_on_delivery' | 'refund' | 'adjustment';
+
+export const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
+  sale_income: 'إيرادات المبيعات',
+  manual_payment: 'دفع يدوي',
+  cash_on_delivery: 'الدفع عند الاستلام',
+  refund: 'استرداد',
+  adjustment: 'تعديل',
+};
+
+export const TRANSACTION_TYPE_COLORS: Record<TransactionType, string> = {
+  sale_income: 'bg-green-100 text-green-800',
+  manual_payment: 'bg-blue-100 text-blue-800',
+  cash_on_delivery: 'bg-gray-100 text-gray-800',
+  refund: 'bg-red-100 text-red-800',
+  adjustment: 'bg-yellow-100 text-yellow-800',
+};
+
+export interface DemoAccountingTransaction {
+  id: string;
+  storeId: string;
+  orderId: string | null;
+  customerName: string;
+  paymentMethodName: string;
+  type: TransactionType;
+  amount: number;
+  status: ReceiptStatus;
+  referenceNumber: string | null;
+  receiptUrl: string | null;
+  notes: string | null;
+  orderNumber: string | null;
+  createdAt: string;
+  confirmedAt: string | null;
+}
+
+// ============ STORE PAGES ============
+
+export interface DemoStorePage {
+  id: string;
+  storeId: string;
+  title: string;
+  slug: string;
+  content: string;
+  status: 'published' | 'draft';
+  showInFooter: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============ STORE SOCIAL LINKS ============
+
+export type SocialPlatform = 'facebook' | 'instagram' | 'tiktok' | 'snapchat' | 'whatsapp' | 'youtube' | 'website' | 'telegram';
+
+export const SOCIAL_PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  facebook: 'فيسبوك',
+  instagram: 'انستغرام',
+  tiktok: 'تيك توك',
+  snapchat: 'سناب شات',
+  whatsapp: 'واتساب',
+  youtube: 'يوتيوب',
+  website: 'الموقع الإلكتروني',
+  telegram: 'تلغرام',
+};
+
+export const SOCIAL_PLATFORM_ICONS: Record<SocialPlatform, string> = {
+  facebook: 'facebook',
+  instagram: 'instagram',
+  tiktok: 'tiktok',
+  snapchat: 'snapchat',
+  whatsapp: 'whatsapp',
+  youtube: 'youtube',
+  website: 'globe',
+  telegram: 'send',
+};
+
+export interface DemoSocialLink {
+  id: string;
+  storeId: string;
+  platform: SocialPlatform;
+  url: string;
+  isActive: boolean;
+}
+
+// ============ STORE THEME / HOMEPAGE SECTIONS ============
+
+export interface HomepageSection {
+  id: string;
+  type: 'hero' | 'featured_products' | 'categories' | 'best_sellers' | 'new_arrivals' | 'offers' | 'whatsapp_cta' | 'about' | 'delivery_info' | 'reviews' | 'social_media' | 'footer';
+  title: string;
+  subtitle: string;
+  imageUrl: string | null;
+  visible: boolean;
+  sortOrder: number;
+}
+
+export interface DemoThemeSettings {
+  storeId: string;
+  primaryColor: string;
+  secondaryColor: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  heroImageUrl: string | null;
+  layoutStyle: string;
+  sections: HomepageSection[];
+}
+
+// ============ ONBOARDING CHECKLIST ============
+
+export interface OnboardingChecklistItem {
+  id: string;
+  label: string;
+  view: string;
+  completed: boolean;
+}
+
 // ============ LABELS ============
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {

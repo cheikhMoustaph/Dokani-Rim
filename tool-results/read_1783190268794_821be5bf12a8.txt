@@ -1,0 +1,1096 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo } from 'react';
+     4→import { useApp } from '@/lib/store';
+     5→import {
+     6→  ADMIN_STATS,
+     7→  DEMO_STORES,
+     8→  DEMO_INVOICES,
+     9→  formatMRU,
+    10→} from '@/lib/demo-data';
+    11→import { STORE_STATUS_LABELS, STORE_STATUS_COLORS } from '@/lib/types';
+    12→
+    13→import { Button } from '@/components/ui/button';
+    14→import {
+    15→  Card,
+    16→  CardHeader,
+    17→  CardTitle,
+    18→  CardContent,
+    19→  CardDescription,
+    20→} from '@/components/ui/card';
+    21→import { Badge } from '@/components/ui/badge';
+    22→import { Input } from '@/components/ui/input';
+    23→import {
+    24→  Table,
+    25→  TableBody,
+    26→  TableCell,
+    27→  TableHead,
+    28→  TableHeader,
+    29→  TableRow,
+    30→} from '@/components/ui/table';
+    31→import {
+    32→  Select,
+    33→  SelectTrigger,
+    34→  SelectValue,
+    35→  SelectContent,
+    36→  SelectItem,
+    37→} from '@/components/ui/select';
+    38→import {
+    39→  Tabs,
+    40→  TabsList,
+    41→  TabsTrigger,
+    42→  TabsContent,
+    43→} from '@/components/ui/tabs';
+    44→import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+    45→import {
+    46→  Dialog,
+    47→  DialogContent,
+    48→  DialogHeader,
+    49→  DialogTitle,
+    50→  DialogFooter,
+    51→  DialogDescription,
+    52→} from '@/components/ui/dialog';
+    53→import { Separator } from '@/components/ui/separator';
+    54→import {
+    55→  DropdownMenu,
+    56→  DropdownMenuTrigger,
+    57→  DropdownMenuContent,
+    58→  DropdownMenuItem,
+    59→} from '@/components/ui/dropdown-menu';
+    60→
+    61→import {
+    62→  Store,
+    63→  Users,
+    64→  ShoppingBag,
+    65→  DollarSign,
+    66→  TrendingUp,
+    67→  AlertCircle,
+    68→  CheckCircle,
+    69→  XCircle,
+    70→  Clock,
+    71→  Eye,
+    72→  Ban,
+    73→  MoreVertical,
+    74→  Search,
+    75→  Bell,
+    76→  ChevronDown,
+    77→  Package,
+    78→  CreditCard,
+    79→  BarChart3,
+    80→  Megaphone,
+    81→  Headphones,
+    82→  Settings,
+    83→  ArrowUpDown,
+    84→  Filter,
+    85→  Menu,
+    86→  X,
+    87→} from 'lucide-react';
+    88→
+    89→// ============ INVOICE STATUS LABELS & COLORS ============
+    90→const INVOICE_STATUS_LABELS: Record<string, string> = {
+    91→  draft: 'مسودة',
+    92→  pending_payment: 'بانتظار الدفع',
+    93→  paid: 'مدفوع',
+    94→  rejected: 'مرفوض',
+    95→  cancelled: 'ملغي',
+    96→  refunded: 'مسترد',
+    97→};
+    98→
+    99→const INVOICE_STATUS_COLORS: Record<string, string> = {
+   100→  draft: 'bg-gray-100 text-gray-800',
+   101→  pending_payment: 'bg-yellow-100 text-yellow-800',
+   102→  paid: 'bg-green-100 text-green-800',
+   103→  rejected: 'bg-red-100 text-red-800',
+   104→  cancelled: 'bg-gray-100 text-gray-600',
+   105→  refunded: 'bg-purple-100 text-purple-800',
+   106→};
+   107→
+   108→// ============ SIDEBAR ITEMS ============
+   109→const SIDEBAR_ITEMS = [
+   110→  { id: 'overview', label: 'نظرة عامة', icon: BarChart3 },
+   111→  { id: 'merchants', label: 'التجار', icon: Users },
+   112→  { id: 'stores', label: 'المتاجر', icon: Store },
+   113→  { id: 'subscriptions', label: 'الاشتراكات', icon: CreditCard },
+   114→  { id: 'payments', label: 'المدفوعات', icon: DollarSign },
+   115→  { id: 'invoices', label: 'الفواتير', icon: TrendingUp },
+   116→  { id: 'orders', label: 'الطلبات', icon: ShoppingBag },
+   117→  { id: 'products', label: 'المنتجات', icon: Package },
+   118→  { id: 'campaigns', label: 'الحملات', icon: Megaphone },
+   119→  { id: 'support', label: 'الدعم', icon: Headphones },
+   120→  { id: 'notifications', label: 'الإشعارات', icon: Bell },
+   121→  { id: 'settings', label: 'الإعدادات', icon: Settings },
+   122→];
+   123→
+   124→// ============ STAT CARDS DATA ============
+   125→const STAT_CARDS = [
+   126→  {
+   127→    label: 'إجمالي التجار',
+   128→    value: ADMIN_STATS.totalMerchants.toLocaleString('ar-EG'),
+   129→    icon: Users,
+   130→    color: 'bg-blue-50 text-blue-600 border-blue-200',
+   131→    iconBg: 'bg-blue-100',
+   132→  },
+   133→  {
+   134→    label: 'المتاجر النشطة',
+   135→    value: ADMIN_STATS.activeStores.toLocaleString('ar-EG'),
+   136→    icon: Store,
+   137→    color: 'bg-green-50 text-green-700 border-green-200',
+   138→    iconBg: 'bg-green-100',
+   139→  },
+   140→  {
+   141→    label: 'متاجر تجريبية',
+   142→    value: ADMIN_STATS.trialStores.toLocaleString('ar-EG'),
+   143→    icon: Clock,
+   144→    color: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+   145→    iconBg: 'bg-yellow-100',
+   146→  },
+   147→  {
+   148→    label: 'متاجر منتهية',
+   149→    value: ADMIN_STATS.expiredStores.toLocaleString('ar-EG'),
+   150→    icon: XCircle,
+   151→    color: 'bg-gray-50 text-gray-600 border-gray-200',
+   152→    iconBg: 'bg-gray-100',
+   153→  },
+   154→  {
+   155→    label: 'متاجر معلقة',
+   156→    value: ADMIN_STATS.suspendedStores.toLocaleString('ar-EG'),
+   157→    icon: Ban,
+   158→    color: 'bg-red-50 text-red-600 border-red-200',
+   159→    iconBg: 'bg-red-100',
+   160→  },
+   161→  {
+   162→    label: 'إجمالي الطلبات',
+   163→    value: ADMIN_STATS.totalOrders.toLocaleString('ar-EG'),
+   164→    icon: ShoppingBag,
+   165→    color: 'bg-purple-50 text-purple-600 border-purple-200',
+   166→    iconBg: 'bg-purple-100',
+   167→  },
+   168→  {
+   169→    label: 'إجمالي المنتجات',
+   170→    value: ADMIN_STATS.totalProducts.toLocaleString('ar-EG'),
+   171→    icon: Package,
+   172→    color: 'bg-cyan-50 text-cyan-600 border-cyan-200',
+   173→    iconBg: 'bg-cyan-100',
+   174→  },
+   175→  {
+   176→    label: 'إجمالي الإيرادات',
+   177→    value: formatMRU(ADMIN_STATS.totalRevenue),
+   178→    icon: DollarSign,
+   179→    color: 'bg-green-50 text-green-700 border-green-200',
+   180→    iconBg: 'bg-green-100',
+   181→  },
+   182→];
+   183→
+   184→// ============ MAIN COMPONENT ============
+   185→export default function AdminDashboard() {
+   186→  const { toggleSidebar, sidebarOpen, setSidebarOpen } = useApp();
+   187→
+   188→  const [activeTab, setActiveTab] = useState('overview');
+   189→  const [activeSidebarItem, setActiveSidebarItem] = useState('overview');
+   190→  const [storeSearch, setStoreSearch] = useState('');
+   191→  const [statusFilter, setStatusFilter] = useState('all');
+   192→  const [cityFilter, setCityFilter] = useState('all');
+   193→  const [dialogOpen, setDialogOpen] = useState(false);
+   194→  const [dialogTitle, setDialogTitle] = useState('');
+   195→  const [dialogDescription, setDialogDescription] = useState('');
+   196→
+   197→  // Map sidebar items to tabs
+   198→  const handleSidebarClick = (id: string) => {
+   199→    setActiveSidebarItem(id);
+   200→    if (id === 'overview') setActiveTab('overview');
+   201→    else if (id === 'stores') setActiveTab('stores');
+   202→    else if (id === 'payments') setActiveTab('payments');
+   203→    else if (id === 'invoices') setActiveTab('payments');
+   204→    setSidebarOpen(false);
+   205→  };
+   206→
+   207→  // Unique cities from demo stores
+   208→  const uniqueCities = useMemo(
+   209→    () => ['all', ...Array.from(new Set(DEMO_STORES.map((s) => s.city)))],
+   210→    []
+   211→  );
+   212→
+   213→  // Filtered stores
+   214→  const filteredStores = useMemo(() => {
+   215→    return DEMO_STORES.filter((store) => {
+   216→      const matchSearch =
+   217→        !storeSearch ||
+   218→        store.name.includes(storeSearch) ||
+   219→        store.city.includes(storeSearch);
+   220→      const matchStatus =
+   221→        statusFilter === 'all' || store.status === statusFilter;
+   222→      const matchCity = cityFilter === 'all' || store.city === cityFilter;
+   223→      return matchSearch && matchStatus && matchCity;
+   224→    });
+   225→  }, [storeSearch, statusFilter, cityFilter]);
+   226→
+   227→  // Payment stats
+   228→  const paymentStats = useMemo(() => {
+   229→    const total = DEMO_INVOICES.reduce((sum, inv) => sum + inv.amount, 0);
+   230→    const confirmed = DEMO_INVOICES.filter((i) => i.status === 'paid').reduce(
+   231→      (sum, i) => sum + i.amount,
+   232→      0
+   233→    );
+   234→    const pending = DEMO_INVOICES.filter(
+   235→      (i) => i.status === 'pending_payment'
+   236→    ).reduce((sum, i) => sum + i.amount, 0);
+   237→    const rejected = DEMO_INVOICES.filter((i) => i.status === 'rejected').reduce(
+   238→      (sum, i) => sum + i.amount,
+   239→      0
+   240→    );
+   241→    return { total, confirmed, pending, rejected };
+   242→  }, []);
+   243→
+   244→  // Open action dialog
+   245→  const openDialog = (title: string, description: string) => {
+   246→    setDialogTitle(title);
+   247→    setDialogDescription(description);
+   248→    setDialogOpen(true);
+   249→  };
+   250→
+   251→  // ============ RENDER ============
+   252→  return (
+   253→    <div dir="rtl" className="min-h-screen bg-[#FAFAF7]" style={{ fontFamily: "'Tajawal', 'Arial', sans-serif" }}>
+   254→      {/* ===== TOP BAR ===== */}
+   255→      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6 shadow-sm">
+   256→        <div className="flex items-center gap-3">
+   257→          {/* Mobile hamburger */}
+   258→          <Button
+   259→            variant="ghost"
+   260→            size="icon"
+   261→            className="lg:hidden"
+   262→            onClick={toggleSidebar}
+   263→          >
+   264→            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+   265→          </Button>
+   266→
+   267→          <div className="flex items-center gap-3">
+   268→            <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: '#0F7A4F' }}>
+   269→              <Store className="h-5 w-5 text-white" />
+   270→            </div>
+   271→            <h1 className="text-lg font-bold text-gray-900 md:text-xl">
+   272→              لوحة إدارة المنصة
+   273→            </h1>
+   274→          </div>
+   275→        </div>
+   276→
+   277→        <div className="flex items-center gap-3">
+   278→          {/* Notification bell */}
+   279→          <Button
+   280→            variant="ghost"
+   281→            size="icon"
+   282→            className="relative text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+   283→          >
+   284→            <Bell className="h-5 w-5" />
+   285→            <span className="absolute -top-0.5 -left-0.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: '#D6A84F' }}>
+   286→              3
+   287→            </span>
+   288→          </Button>
+   289→
+   290→          <Separator orientation="vertical" className="h-8 bg-gray-200" />
+   291→
+   292→          {/* Admin info */}
+   293→          <div className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1.5 transition-colors">
+   294→            <Avatar className="h-9 w-9 border-2" style={{ borderColor: '#0F7A4F' }}>
+   295→              <AvatarFallback className="text-sm font-bold text-white" style={{ backgroundColor: '#0F7A4F' }}>
+   296→                م
+   297→              </AvatarFallback>
+   298→            </Avatar>
+   299→            <div className="hidden sm:block">
+   300→              <p className="text-sm font-semibold text-gray-900 leading-tight">مدير دكاني</p>
+   301→              <p className="text-xs text-gray-500 leading-tight">مدير النظام</p>
+   302→            </div>
+   303→            <ChevronDown className="hidden sm:block h-4 w-4 text-gray-400" />
+   304→          </div>
+   305→        </div>
+   306→      </header>
+   307→
+   308→      <div className="flex">
+   309→        {/* ===== SIDEBAR OVERLAY (mobile) ===== */}
+   310→        {sidebarOpen && (
+   311→          <div
+   312→            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+   313→            onClick={() => setSidebarOpen(false)}
+   314→          />
+   315→        )}
+   316→
+   317→        {/* ===== SIDEBAR ===== */}
+   318→        <aside
+   319→          className={`
+   320→            fixed top-16 right-0 z-50 h-[calc(100vh-4rem)] w-64 transform overflow-y-auto transition-transform duration-300 ease-in-out
+   321→            lg:sticky lg:top-16 lg:z-30 lg:h-[calc(100vh-4rem)] lg:translate-x-0
+   322→            ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+   323→          `}
+   324→          style={{ backgroundColor: '#0F7A4F' }}
+   325→        >
+   326→          <nav className="flex flex-col py-4 px-3">
+   327→            {SIDEBAR_ITEMS.map((item) => {
+   328→              const Icon = item.icon;
+   329→              const isActive = activeSidebarItem === item.id;
+   330→              return (
+   331→                <button
+   332→                  key={item.id}
+   333→                  onClick={() => handleSidebarClick(item.id)}
+   334→                  className={`
+   335→                    flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
+   336→                    ${
+   337→                      isActive
+   338→                        ? 'bg-white/15 text-white shadow-sm'
+   339→                        : 'text-white/75 hover:bg-white/10 hover:text-white'
+   340→                    }
+   341→                  `}
+   342→                >
+   343→                  <Icon className="h-5 w-5 shrink-0" />
+   344→                  <span>{item.label}</span>
+   345→                </button>
+   346→              );
+   347→            })}
+   348→
+   349→            <div className="my-4 border-t border-white/20" />
+   350→
+   351→            {/* Platform brand */}
+   352→            <div className="flex items-center gap-2 px-3 py-2">
+   353→              <div className="h-8 w-8 rounded-lg bg-white/15 flex items-center justify-center">
+   354→                <Store className="h-4 w-4 text-white" />
+   355→              </div>
+   356→              <div>
+   357→                <p className="text-sm font-bold text-white">دكاني</p>
+   358→                <p className="text-[11px] text-white/60">الإصدار 2.0</p>
+   359→              </div>
+   360→            </div>
+   361→          </nav>
+   362→        </aside>
+   363→
+   364→        {/* ===== MAIN CONTENT ===== */}
+   365→        <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
+   366→          <Tabs
+   367→            value={activeTab}
+   368→            onValueChange={(val) => {
+   369→              setActiveTab(val);
+   370→              const tabToSidebar: Record<string, string> = {
+   371→                overview: 'overview',
+   372→                stores: 'stores',
+   373→                payments: 'payments',
+   374→              };
+   375→              setActiveSidebarItem(tabToSidebar[val] || val);
+   376→            }}
+   377→            className="w-full"
+   378→          >
+   379→            {/* ============ OVERVIEW TAB ============ */}
+   380→            <TabsContent value="overview" className="mt-0 space-y-6">
+   381→              {/* Page title */}
+   382→              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   383→                <div>
+   384→                  <h2 className="text-2xl font-bold text-gray-900">نظرة عامة</h2>
+   385→                  <p className="text-sm text-gray-500 mt-1">
+   386→                    ملخص شامل لحالة المنصة اليوم
+   387→                  </p>
+   388→                </div>
+   389→                <Badge
+   390→                  variant="outline"
+   391→                  className="w-fit text-xs px-3 py-1.5 border-gray-300 text-gray-600"
+   392→                >
+   393→                  آخر تحديث: اليوم ١٢:٠٠
+   394→                </Badge>
+   395→              </div>
+   396→
+   397→              {/* Stats grid */}
+   398→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   399→                {STAT_CARDS.map((stat, idx) => {
+   400→                  const Icon = stat.icon;
+   401→                  return (
+   402→                    <Card
+   403→                      key={idx}
+   404→                      className={`border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 cursor-default ${stat.color}`}
+   405→                    >
+   406→                      <CardContent className="p-4 md:p-5">
+   407→                        <div className="flex items-center justify-between">
+   408→                          <div className="space-y-1.5">
+   409→                            <p className="text-xs font-medium opacity-70">
+   410→                              {stat.label}
+   411→                            </p>
+   412→                            <p className="text-xl md:text-2xl font-bold leading-tight">
+   413→                              {stat.value}
+   414→                            </p>
+   415→                          </div>
+   416→                          <div
+   417→                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${stat.iconBg}`}
+   418→                          >
+   419→                            <Icon className="h-5 w-5" />
+   420→                          </div>
+   421→                        </div>
+   422→                      </CardContent>
+   423→                    </Card>
+   424→                  );
+   425→                })}
+   426→              </div>
+   427→
+   428→              {/* Quick insights row */}
+   429→              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   430→                {/* Recent stores card */}
+   431→                <Card className="border-gray-200 hover:shadow-sm transition-shadow">
+   432→                  <CardHeader className="pb-3">
+   433→                    <div className="flex items-center justify-between">
+   434→                      <CardTitle className="text-base font-bold text-gray-900">
+   435→                        أحدث المتاجر
+   436→                      </CardTitle>
+   437→                      <Button
+   438→                        variant="ghost"
+   439→                        size="sm"
+   440→                        className="text-xs hover:bg-gray-100"
+   441→                        onClick={() => {
+   442→                          setActiveTab('stores');
+   443→                          setActiveSidebarItem('stores');
+   444→                        }}
+   445→                      >
+   446→                        عرض الكل
+   447→                        <ChevronDown className="h-3.5 w-3.5 rotate-90 mr-1" />
+   448→                      </Button>
+   449→                    </div>
+   450→                    <CardDescription>آخر المتاجر المسجلة في المنصة</CardDescription>
+   451→                  </CardHeader>
+   452→                  <CardContent className="pt-0">
+   453→                    <div className="space-y-3">
+   454→                      {DEMO_STORES.slice(0, 5).map((store) => (
+   455→                        <div
+   456→                          key={store.id}
+   457→                          className="flex items-center justify-between rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition-colors"
+   458→                        >
+   459→                          <div className="flex items-center gap-3 min-w-0">
+   460→                            <div
+   461→                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white text-sm font-bold"
+   462→                              style={{ backgroundColor: '#0F7A4F' }}
+   463→                            >
+   464→                              {store.name.charAt(0)}
+   465→                            </div>
+   466→                            <div className="min-w-0">
+   467→                              <p className="text-sm font-semibold text-gray-900 truncate">
+   468→                                {store.name}
+   469→                              </p>
+   470→                              <p className="text-xs text-gray-500">{store.city}</p>
+   471→                            </div>
+   472→                          </div>
+   473→                          <Badge
+   474→                            variant="secondary"
+   475→                            className={`text-[11px] shrink-0 ${STORE_STATUS_COLORS[store.status] || 'bg-gray-100 text-gray-700'}`}
+   476→                          >
+   477→                            {STORE_STATUS_LABELS[store.status] || store.status}
+   478→                          </Badge>
+   479→                        </div>
+   480→                      ))}
+   481→                    </div>
+   482→                  </CardContent>
+   483→                </Card>
+   484→
+   485→                {/* Recent payments card */}
+   486→                <Card className="border-gray-200 hover:shadow-sm transition-shadow">
+   487→                  <CardHeader className="pb-3">
+   488→                    <div className="flex items-center justify-between">
+   489→                      <CardTitle className="text-base font-bold text-gray-900">
+   490→                        أحدث المدفوعات
+   491→                      </CardTitle>
+   492→                      <Button
+   493→                        variant="ghost"
+   494→                        size="sm"
+   495→                        className="text-xs hover:bg-gray-100"
+   496→                        onClick={() => {
+   497→                          setActiveTab('payments');
+   498→                          setActiveSidebarItem('payments');
+   499→                        }}
+   500→                      >
+   501→                        عرض الكل
+   502→                        <ChevronDown className="h-3.5 w-3.5 rotate-90 mr-1" />
+   503→                      </Button>
+   504→                    </div>
+   505→                    <CardDescription>آخر عمليات الدفع في المنصة</CardDescription>
+   506→                  </CardHeader>
+   507→                  <CardContent className="pt-0">
+   508→                    <div className="space-y-3">
+   509→                      {DEMO_INVOICES.map((inv) => (
+   510→                        <div
+   511→                          key={inv.id}
+   512→                          className="flex items-center justify-between rounded-lg border border-gray-100 p-3 hover:bg-gray-50 transition-colors"
+   513→                        >
+   514→                          <div className="min-w-0 flex-1">
+   515→                            <p className="text-sm font-semibold text-gray-900 truncate">
+   516→                              {inv.storeName}
+   517→                            </p>
+   518→                            <p className="text-xs text-gray-500">
+   519→                              {inv.merchantName} • {inv.invoiceNumber}
+   520→                            </p>
+   521→                          </div>
+   522→                          <div className="text-left shrink-0 mr-3">
+   523→                            <p className="text-sm font-bold text-gray-900">
+   524→                              {formatMRU(inv.amount)}
+   525→                            </p>
+   526→                            <Badge
+   527→                              variant="secondary"
+   528→                              className={`text-[10px] ${INVOICE_STATUS_COLORS[inv.status] || 'bg-gray-100 text-gray-700'}`}
+   529→                            >
+   530→                              {INVOICE_STATUS_LABELS[inv.status] || inv.status}
+   531→                            </Badge>
+   532→                          </div>
+   533→                        </div>
+   534→                      ))}
+   535→                    </div>
+   536→                  </CardContent>
+   537→                </Card>
+   538→              </div>
+   539→            </TabsContent>
+   540→
+   541→            {/* ============ STORES TAB ============ */}
+   542→            <TabsContent value="stores" className="mt-0 space-y-6">
+   543→              {/* Page title */}
+   544→              <div>
+   545→                <h2 className="text-2xl font-bold text-gray-900">إدارة المتاجر</h2>
+   546→                <p className="text-sm text-gray-500 mt-1">
+   547→                  عرض وإدارة جميع المتاجر المسجلة في المنصة
+   548→                </p>
+   549→              </div>
+   550→
+   551→              {/* Filter bar */}
+   552→              <Card className="border-gray-200">
+   553→                <CardContent className="p-4">
+   554→                  <div className="flex flex-col sm:flex-row gap-3">
+   555→                    <div className="relative flex-1">
+   556→                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   557→                      <Input
+   558→                        placeholder="ابحث بالاسم أو المدينة..."
+   559→                        value={storeSearch}
+   560→                        onChange={(e) => setStoreSearch(e.target.value)}
+   561→                        className="pr-9 h-10 border-gray-300 focus:border-[#0F7A4F] focus:ring-[#0F7A4F]/20"
+   562→                      />
+   563→                    </div>
+   564→                    <div className="flex gap-3">
+   565→                      <Select
+   566→                        value={statusFilter}
+   567→                        onValueChange={setStatusFilter}
+   568→                      >
+   569→                        <SelectTrigger className="w-full sm:w-44 h-10 border-gray-300">
+   570→                          <Filter className="h-4 w-4 ml-2 text-gray-400" />
+   571→                          <SelectValue placeholder="الحالة" />
+   572→                        </SelectTrigger>
+   573→                        <SelectContent>
+   574→                          <SelectItem value="all">جميع الحالات</SelectItem>
+   575→                          {Object.entries(STORE_STATUS_LABELS).map(
+   576→                            ([key, label]) => (
+   577→                              <SelectItem key={key} value={key}>
+   578→                                {label}
+   579→                              </SelectItem>
+   580→                            )
+   581→                          )}
+   582→                        </SelectContent>
+   583→                      </Select>
+   584→                      <Select value={cityFilter} onValueChange={setCityFilter}>
+   585→                        <SelectTrigger className="w-full sm:w-44 h-10 border-gray-300">
+   586→                          <SelectValue placeholder="المدينة" />
+   587→                        </SelectTrigger>
+   588→                        <SelectContent>
+   589→                          {uniqueCities.map((city) => (
+   590→                            <SelectItem key={city} value={city}>
+   591→                              {city === 'all' ? 'جميع المدن' : city}
+   592→                            </SelectItem>
+   593→                          ))}
+   594→                        </SelectContent>
+   595→                      </Select>
+   596→                    </div>
+   597→                  </div>
+   598→                </CardContent>
+   599→              </Card>
+   600→
+   601→              {/* Stores table */}
+   602→              <Card className="border-gray-200 overflow-hidden">
+   603→                <CardContent className="p-0">
+   604→                  <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+   605→                    <Table>
+   606→                      <TableHeader>
+   607→                        <TableRow className="bg-gray-50/80 hover:bg-gray-50/80 sticky top-0 z-10">
+   608→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   609→                            المتجر
+   610→                          </TableHead>
+   611→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   612→                            المدينة
+   613→                          </TableHead>
+   614→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   615→                            المنتجات
+   616→                          </TableHead>
+   617→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   618→                            الطلبات
+   619→                          </TableHead>
+   620→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   621→                            الإيرادات
+   622→                          </TableHead>
+   623→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   624→                            الحالة
+   625→                          </TableHead>
+   626→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   627→                            تاريخ الإنشاء
+   628→                          </TableHead>
+   629→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   630→                            إجراءات
+   631→                          </TableHead>
+   632→                        </TableRow>
+   633→                      </TableHeader>
+   634→                      <TableBody>
+   635→                        {filteredStores.length === 0 ? (
+   636→                          <TableRow>
+   637→                            <TableCell
+   638→                              colSpan={8}
+   639→                              className="text-center py-12 text-gray-500"
+   640→                            >
+   641→                              <div className="flex flex-col items-center gap-2">
+   642→                                <Search className="h-8 w-8 text-gray-300" />
+   643→                                <p>لا توجد نتائج مطابقة</p>
+   644→                              </div>
+   645→                            </TableCell>
+   646→                          </TableRow>
+   647→                        ) : (
+   648→                          filteredStores.map((store) => (
+   649→                            <TableRow
+   650→                              key={store.id}
+   651→                              className="border-b border-gray-100 hover:bg-gray-50/60 transition-colors"
+   652→                            >
+   653→                              <TableCell className="py-3.5 px-4">
+   654→                                <div className="flex items-center gap-3">
+   655→                                  <div
+   656→                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white text-xs font-bold"
+   657→                                    style={{ backgroundColor: '#0F7A4F' }}
+   658→                                  >
+   659→                                    {store.name.charAt(0)}
+   660→                                  </div>
+   661→                                  <div className="min-w-0">
+   662→                                    <p className="text-sm font-semibold text-gray-900 truncate max-w-[160px]">
+   663→                                      {store.name}
+   664→                                    </p>
+   665→                                    <p className="text-[11px] text-gray-400 truncate max-w-[160px]">
+   666→                                      {store.description}
+   667→                                    </p>
+   668→                                  </div>
+   669→                                </div>
+   670→                              </TableCell>
+   671→                              <TableCell className="py-3.5 px-4 text-sm text-gray-600">
+   672→                                {store.city}
+   673→                              </TableCell>
+   674→                              <TableCell className="py-3.5 px-4 text-center text-sm font-medium text-gray-700">
+   675→                                {store.productCount}
+   676→                              </TableCell>
+   677→                              <TableCell className="py-3.5 px-4 text-center text-sm font-medium text-gray-700">
+   678→                                {store.orderCount}
+   679→                              </TableCell>
+   680→                              <TableCell className="py-3.5 px-4 text-sm font-semibold text-gray-900">
+   681→                                {formatMRU(store.revenue)}
+   682→                              </TableCell>
+   683→                              <TableCell className="py-3.5 px-4 text-center">
+   684→                                <Badge
+   685→                                  variant="secondary"
+   686→                                  className={`text-[11px] font-medium ${STORE_STATUS_COLORS[store.status] || 'bg-gray-100 text-gray-700'}`}
+   687→                                >
+   688→                                  {STORE_STATUS_LABELS[store.status] || store.status}
+   689→                                </Badge>
+   690→                              </TableCell>
+   691→                              <TableCell className="py-3.5 px-4 text-sm text-gray-500">
+   692→                                {new Date(store.createdAt).toLocaleDateString('ar-EG', {
+   693→                                  year: 'numeric',
+   694→                                  month: 'short',
+   695→                                  day: 'numeric',
+   696→                                })}
+   697→                              </TableCell>
+   698→                              <TableCell className="py-3.5 px-4 text-center">
+   699→                                <DropdownMenu>
+   700→                                  <DropdownMenuTrigger asChild>
+   701→                                    <Button
+   702→                                      variant="ghost"
+   703→                                      size="icon"
+   704→                                      className="h-8 w-8 hover:bg-gray-100"
+   705→                                    >
+   706→                                      <MoreVertical className="h-4 w-4 text-gray-500" />
+   707→                                    </Button>
+   708→                                  </DropdownMenuTrigger>
+   709→                                  <DropdownMenuContent align="end" className="w-40">
+   710→                                    <DropdownMenuItem
+   711→                                      className="cursor-pointer"
+   712→                                      onClick={() =>
+   713→                                        openDialog(
+   714→                                          `عرض المتجر: ${store.name}`,
+   715→                                          `الاسم: ${store.name}\nالمدينة: ${store.city}\nالحالة: ${STORE_STATUS_LABELS[store.status]}\nالمنتجات: ${store.productCount}\nالطلبات: ${store.orderCount}\nالإيرادات: ${formatMRU(store.revenue)}\nتاريخ الإنشاء: ${store.createdAt}`
+   716→                                        )
+   717→                                      }
+   718→                                    >
+   719→                                      <Eye className="h-4 w-4 ml-2 text-blue-500" />
+   720→                                      عرض
+   721→                                    </DropdownMenuItem>
+   722→                                    <DropdownMenuItem
+   723→                                      className="cursor-pointer text-red-600 focus:text-red-600"
+   724→                                      onClick={() =>
+   725→                                        openDialog(
+   726→                                          `تعليق المتجر: ${store.name}`,
+   727→                                          `هل أنت متأكد من تعليق المتجر "${store.name}"؟ سيتم منع صاحب المتجر من الوصول حتى تتم إعادة تفعيله.`
+   728→                                        )
+   729→                                      }
+   730→                                    >
+   731→                                      <Ban className="h-4 w-4 ml-2" />
+   732→                                      تعليق
+   733→                                    </DropdownMenuItem>
+   734→                                    <DropdownMenuItem
+   735→                                      className="cursor-pointer"
+   736→                                      onClick={() =>
+   737→                                        openDialog(
+   738→                                          `تفعيل المتجر: ${store.name}`,
+   739→                                          `سيتم تفعيل المتجر "${store.name}" وجعله متاحاً للاستخدام.`
+   740→                                        )
+   741→                                      }
+   742→                                    >
+   743→                                      <CheckCircle className="h-4 w-4 ml-2 text-green-500" />
+   744→                                      تفعيل
+   745→                                    </DropdownMenuItem>
+   746→                                    <DropdownMenuItem
+   747→                                      className="cursor-pointer"
+   748→                                      onClick={() =>
+   749→                                        openDialog(
+   750→                                          `إرسال إشعار إلى: ${store.name}`,
+   751→                                          `سيتم إرسال إشعار إلى مالك المتجر "${store.name}" عبر البريد الإلكتروني والهاتف.`
+   752→                                        )
+   753→                                      }
+   754→                                    >
+   755→                                      <Bell className="h-4 w-4 ml-2" style={{ color: '#D6A84F' }} />
+   756→                                      إرسال إشعار
+   757→                                    </DropdownMenuItem>
+   758→                                  </DropdownMenuContent>
+   759→                                </DropdownMenu>
+   760→                              </TableCell>
+   761→                            </TableRow>
+   762→                          ))
+   763→                        )}
+   764→                      </TableBody>
+   765→                    </Table>
+   766→                  </div>
+   767→                </CardContent>
+   768→              </Card>
+   769→
+   770→              {/* Store count summary */}
+   771→              <div className="flex items-center justify-between text-sm text-gray-500">
+   772→                <p>
+   773→                  عرض{' '}
+   774→                  <span className="font-semibold text-gray-700">
+   775→                    {filteredStores.length}
+   776→                  </span>{' '}
+   777→                  متجر من أصل{' '}
+   778→                  <span className="font-semibold text-gray-700">
+   779→                    {DEMO_STORES.length}
+   780→                  </span>
+   781→                </p>
+   782→              </div>
+   783→            </TabsContent>
+   784→
+   785→            {/* ============ PAYMENTS TAB ============ */}
+   786→            <TabsContent value="payments" className="mt-0 space-y-6">
+   787→              {/* Page title */}
+   788→              <div>
+   789→                <h2 className="text-2xl font-bold text-gray-900">إدارة المدفوعات</h2>
+   790→                <p className="text-sm text-gray-500 mt-1">
+   791→                  متابعة وتأكيد المدفوعات والفواتير
+   792→                </p>
+   793→              </div>
+   794→
+   795→              {/* Payment stats */}
+   796→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   797→                <Card className="border-gray-200 hover:shadow-sm transition-shadow">
+   798→                  <CardContent className="p-4">
+   799→                    <div className="flex items-center gap-3">
+   800→                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100">
+   801→                        <DollarSign className="h-5 w-5 text-emerald-600" />
+   802→                      </div>
+   803→                      <div>
+   804→                        <p className="text-xs text-gray-500">إجمالي المدفوعات</p>
+   805→                        <p className="text-lg font-bold text-gray-900">
+   806→                          {formatMRU(paymentStats.total)}
+   807→                        </p>
+   808→                      </div>
+   809→                    </div>
+   810→                  </CardContent>
+   811→                </Card>
+   812→
+   813→                <Card className="border-gray-200 hover:shadow-sm transition-shadow">
+   814→                  <CardContent className="p-4">
+   815→                    <div className="flex items-center gap-3">
+   816→                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-100">
+   817→                        <CheckCircle className="h-5 w-5 text-green-600" />
+   818→                      </div>
+   819→                      <div>
+   820→                        <p className="text-xs text-gray-500">المدفوعات المؤكدة</p>
+   821→                        <p className="text-lg font-bold text-green-700">
+   822→                          {formatMRU(paymentStats.confirmed)}
+   823→                        </p>
+   824→                      </div>
+   825→                    </div>
+   826→                  </CardContent>
+   827→                </Card>
+   828→
+   829→                <Card className="border-gray-200 hover:shadow-sm transition-shadow">
+   830→                  <CardContent className="p-4">
+   831→                    <div className="flex items-center gap-3">
+   832→                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-100">
+   833→                        <Clock className="h-5 w-5 text-yellow-600" />
+   834→                      </div>
+   835→                      <div>
+   836→                        <p className="text-xs text-gray-500">بانتظار التأكيد</p>
+   837→                        <p className="text-lg font-bold text-yellow-700">
+   838→                          {formatMRU(paymentStats.pending)}
+   839→                        </p>
+   840→                      </div>
+   841→                    </div>
+   842→                  </CardContent>
+   843→                </Card>
+   844→
+   845→                <Card className="border-gray-200 hover:shadow-sm transition-shadow">
+   846→                  <CardContent className="p-4">
+   847→                    <div className="flex items-center gap-3">
+   848→                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-100">
+   849→                        <XCircle className="h-5 w-5 text-red-500" />
+   850→                      </div>
+   851→                      <div>
+   852→                        <p className="text-xs text-gray-500">المرفوضة</p>
+   853→                        <p className="text-lg font-bold text-red-600">
+   854→                          {formatMRU(paymentStats.rejected)}
+   855→                        </p>
+   856→                      </div>
+   857→                    </div>
+   858→                  </CardContent>
+   859→                </Card>
+   860→              </div>
+   861→
+   862→              {/* Payments table */}
+   863→              <Card className="border-gray-200 overflow-hidden">
+   864→                <CardHeader className="pb-3 border-b border-gray-100">
+   865→                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+   866→                    <CardTitle className="text-base font-bold text-gray-900">
+   867→                      قائمة الفواتير
+   868→                    </CardTitle>
+   869→                    <div className="flex items-center gap-2">
+   870→                      <ArrowUpDown className="h-4 w-4 text-gray-400" />
+   871→                      <span className="text-xs text-gray-500">
+   872→                        ترتيب حسب التاريخ
+   873→                      </span>
+   874→                    </div>
+   875→                  </div>
+   876→                </CardHeader>
+   877→                <CardContent className="p-0">
+   878→                  <div className="overflow-x-auto">
+   879→                    <Table>
+   880→                      <TableHeader>
+   881→                        <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+   882→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   883→                            رقم الفاتورة
+   884→                          </TableHead>
+   885→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   886→                            التاجر
+   887→                          </TableHead>
+   888→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   889→                            المتجر
+   890→                          </TableHead>
+   891→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   892→                            الخطة
+   893→                          </TableHead>
+   894→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   895→                            المبلغ
+   896→                          </TableHead>
+   897→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   898→                            طريقة الدفع
+   899→                          </TableHead>
+   900→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   901→                            الحالة
+   902→                          </TableHead>
+   903→                          <TableHead className="text-right font-semibold text-gray-700 py-3 px-4">
+   904→                            التاريخ
+   905→                          </TableHead>
+   906→                          <TableHead className="text-center font-semibold text-gray-700 py-3 px-4">
+   907→                            إجراءات
+   908→                          </TableHead>
+   909→                        </TableRow>
+   910→                      </TableHeader>
+   911→                      <TableBody>
+   912→                        {DEMO_INVOICES.map((inv) => (
+   913→                          <TableRow
+   914→                            key={inv.id}
+   915→                            className="border-b border-gray-100 hover:bg-gray-50/60 transition-colors"
+   916→                          >
+   917→                            <TableCell className="py-3.5 px-4">
+   918→                              <span className="text-sm font-mono font-semibold text-gray-900">
+   919→                                {inv.invoiceNumber}
+   920→                              </span>
+   921→                            </TableCell>
+   922→                            <TableCell className="py-3.5 px-4 text-sm text-gray-700">
+   923→                              {inv.merchantName}
+   924→                            </TableCell>
+   925→                            <TableCell className="py-3.5 px-4">
+   926→                              <div className="flex items-center gap-2">
+   927→                                <div
+   928→                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white text-[10px] font-bold"
+   929→                                  style={{ backgroundColor: '#0F7A4F' }}
+   930→                                >
+   931→                                  {inv.storeName.charAt(0)}
+   932→                                </div>
+   933→                                <span className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
+   934→                                  {inv.storeName}
+   935→                                </span>
+   936→                              </div>
+   937→                            </TableCell>
+   938→                            <TableCell className="py-3.5 px-4 text-center">
+   939→                              <Badge
+   940→                                variant="outline"
+   941→                                className="text-xs font-medium border-gray-300 text-gray-700"
+   942→                              >
+   943→                                {inv.plan}
+   944→                              </Badge>
+   945→                            </TableCell>
+   946→                            <TableCell className="py-3.5 px-4 text-sm font-bold text-gray-900">
+   947→                              {formatMRU(inv.amount)}
+   948→                            </TableCell>
+   949→                            <TableCell className="py-3.5 px-4 text-center">
+   950→                              <Badge
+   951→                                variant="secondary"
+   952→                                className={`text-[11px] font-medium ${
+   953→                                  inv.paymentMethod === 'bankily'
+   954→                                    ? 'bg-blue-50 text-blue-700'
+   955→                                    : inv.paymentMethod === 'masrvi'
+   956→                                      ? 'bg-purple-50 text-purple-700'
+   957→                                      : 'bg-gray-100 text-gray-700'
+   958→                                }`}
+   959→                              >
+   960→                                {inv.paymentMethod === 'bankily'
+   961→                                  ? 'بنكيلي'
+   962→                                  : inv.paymentMethod === 'masrvi'
+   963→                                    ? 'مصريفي'
+   964→                                    : inv.paymentMethod === 'cash'
+   965→                                      ? 'نقدي'
+   966→                                      : inv.paymentMethod}
+   967→                              </Badge>
+   968→                            </TableCell>
+   969→                            <TableCell className="py-3.5 px-4 text-center">
+   970→                              <Badge
+   971→                                variant="secondary"
+   972→                                className={`text-[11px] font-medium ${INVOICE_STATUS_COLORS[inv.status] || 'bg-gray-100 text-gray-700'}`}
+   973→                              >
+   974→                                {INVOICE_STATUS_LABELS[inv.status] || inv.status}
+   975→                              </Badge>
+   976→                            </TableCell>
+   977→                            <TableCell className="py-3.5 px-4 text-sm text-gray-500">
+   978→                              {new Date(inv.createdAt).toLocaleDateString('ar-EG', {
+   979→                                year: 'numeric',
+   980→                                month: 'short',
+   981→                                day: 'numeric',
+   982→                              })}
+   983→                            </TableCell>
+   984→                            <TableCell className="py-3.5 px-4 text-center">
+   985→                              <DropdownMenu>
+   986→                                <DropdownMenuTrigger asChild>
+   987→                                  <Button
+   988→                                    variant="ghost"
+   989→                                    size="icon"
+   990→                                    className="h-8 w-8 hover:bg-gray-100"
+   991→                                  >
+   992→                                    <MoreVertical className="h-4 w-4 text-gray-500" />
+   993→                                  </Button>
+   994→                                </DropdownMenuTrigger>
+   995→                                <DropdownMenuContent align="end" className="w-40">
+   996→                                  <DropdownMenuItem
+   997→                                    className="cursor-pointer"
+   998→                                    onClick={() =>
+   999→                                      openDialog(
+  1000→                                        `عرض الفاتورة: ${inv.invoiceNumber}`,
+  1001→                                        `رقم الفاتورة: ${inv.invoiceNumber}\nالتاجر: ${inv.merchantName}\nالمتجر: ${inv.storeName}\nالخطة: ${inv.plan}\nالمدة: ${inv.duration}\nالمبلغ: ${formatMRU(inv.amount)}\nطريقة الدفع: ${inv.paymentMethod}\nالحالة: ${INVOICE_STATUS_LABELS[inv.status]}\nالتاريخ: ${inv.createdAt}${inv.paidAt ? `\nتاريخ الدفع: ${inv.paidAt}` : ''}`
+  1002→                                      )
+  1003→                                    }
+  1004→                                  >
+  1005→                                    <Eye className="h-4 w-4 ml-2 text-blue-500" />
+  1006→                                    عرض
+  1007→                                  </DropdownMenuItem>
+  1008→                                  {inv.status === 'pending_payment' && (
+  1009→                                    <>
+  1010→                                      <DropdownMenuItem
+  1011→                                        className="cursor-pointer"
+  1012→                                        onClick={() =>
+  1013→                                          openDialog(
+  1014→                                            `تأكيد الدفع: ${inv.invoiceNumber}`,
+  1015→                                            `سيتم تأكيد استلام دفع بقيمة ${formatMRU(inv.amount)} من ${inv.merchantName} (${inv.storeName}) عبر ${inv.paymentMethod}.`
+  1016→                                          )
+  1017→                                        }
+  1018→                                      >
+  1019→                                        <CheckCircle className="h-4 w-4 ml-2 text-green-500" />
+  1020→                                        تأكيد الدفع
+  1021→                                      </DropdownMenuItem>
+  1022→                                      <DropdownMenuItem
+  1023→                                        className="cursor-pointer text-red-600 focus:text-red-600"
+  1024→                                        onClick={() =>
+  1025→                                          openDialog(
+  1026→                                            `رفض الدفع: ${inv.invoiceNumber}`,
+  1027→                                            `سيتم رفض الدفع بقيمة ${formatMRU(inv.amount)} من ${inv.merchantName}. يرجى التأكد من صحة الإجراء.`
+  1028→                                          )
+  1029→                                        }
+  1030→                                      >
+  1031→                                        <XCircle className="h-4 w-4 ml-2" />
+  1032→                                        رفض
+  1033→                                      </DropdownMenuItem>
+  1034→                                    </>
+  1035→                                  )}
+  1036→                                  {inv.status === 'draft' && (
+  1037→                                    <DropdownMenuItem
+  1038→                                      className="cursor-pointer"
+  1039→                                      onClick={() =>
+  1040→                                        openDialog(
+  1041→                                          `تأكيد الدفع: ${inv.invoiceNumber}`,
+  1042→                                          `سيتم تحويل حالة الفاتورة من "مسودة" إلى "مدفوع" بقيمة ${formatMRU(inv.amount)}.`
+  1043→                                        )
+  1044→                                      }
+  1045→                                    >
+  1046→                                      <CheckCircle className="h-4 w-4 ml-2 text-green-500" />
+  1047→                                      تأكيد الدفع
+  1048→                                    </DropdownMenuItem>
+  1049→                                  )}
+  1050→                                </DropdownMenuContent>
+  1051→                              </DropdownMenu>
+  1052→                            </TableCell>
+  1053→                          </TableRow>
+  1054→                        ))}
+  1055→                      </TableBody>
+  1056→                    </Table>
+  1057→                  </div>
+  1058→                </CardContent>
+  1059→              </Card>
+  1060→            </TabsContent>
+  1061→          </Tabs>
+  1062→        </main>
+  1063→      </div>
+  1064→
+  1065→      {/* ===== ACTION DIALOG ===== */}
+  1066→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+  1067→        <DialogContent className="sm:max-w-md" dir="rtl">
+  1068→          <DialogHeader>
+  1069→            <DialogTitle className="text-lg font-bold text-gray-900">
+  1070→              {dialogTitle}
+  1071→            </DialogTitle>
+  1072→            <DialogDescription className="whitespace-pre-line text-sm text-gray-600 leading-relaxed pt-2">
+  1073→              {dialogDescription}
+  1074→            </DialogDescription>
+  1075→          </DialogHeader>
+  1076→          <DialogFooter className="gap-2 sm:gap-0 sm:justify-start">
+  1077→            <Button
+  1078→              onClick={() => setDialogOpen(false)}
+  1079→              className="text-white"
+  1080→              style={{ backgroundColor: '#0F7A4F' }}
+  1081→            >
+  1082→              حسناً
+  1083→            </Button>
+  1084→            <Button
+  1085→              variant="outline"
+  1086→              onClick={() => setDialogOpen(false)}
+  1087→              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+  1088→            >
+  1089→              إلغاء
+  1090→            </Button>
+  1091→          </DialogFooter>
+  1092→        </DialogContent>
+  1093→      </Dialog>
+  1094→    </div>
+  1095→  );
+  1096→}

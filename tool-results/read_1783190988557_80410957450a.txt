@@ -1,0 +1,1501 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo } from 'react';
+     4→import { useApp } from '@/lib/store';
+     5→import {
+     6→  MERCHANT_STATS,
+     7→  DEMO_PRODUCTS,
+     8→  DEMO_CATEGORIES,
+     9→  DEMO_ORDERS,
+    10→  DEMO_INVOICES,
+    11→  formatMRU,
+    12→} from '@/lib/demo-data';
+    13→import {
+    14→  ORDER_STATUS_LABELS,
+    15→  ORDER_STATUS_COLORS,
+    16→} from '@/lib/types';
+    17→import type { DemoProduct, DemoCategory } from '@/lib/types';
+    18→
+    19→import { Button } from '@/components/ui/button';
+    20→import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+    21→import { Badge } from '@/components/ui/badge';
+    22→import { Input } from '@/components/ui/input';
+    23→import { Label } from '@/components/ui/label';
+    24→import {
+    25→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    26→} from '@/components/ui/table';
+    27→import {
+    28→  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+    29→} from '@/components/ui/select';
+    30→import {
+    31→  Tabs, TabsList, TabsTrigger, TabsContent,
+    32→} from '@/components/ui/tabs';
+    33→import {
+    34→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+    35→} from '@/components/ui/dialog';
+    36→import { Separator } from '@/components/ui/separator';
+    37→import {
+    38→  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+    39→} from '@/components/ui/sheet';
+    40→import { Textarea } from '@/components/ui/textarea';
+    41→import { Switch } from '@/components/ui/switch';
+    42→import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+    43→import {
+    44→  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+    45→} from '@/components/ui/dropdown-menu';
+    46→import { ScrollArea } from '@/components/ui/scroll-area';
+    47→import { Skeleton } from '@/components/ui/skeleton';
+    48→import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+    49→import { useIsMobile } from '@/hooks/use-mobile';
+    50→import {
+    51→  CustomersModule, CampaignsModule, CouponsModule,
+    52→  DeliveryModule, AutomationModule,
+    53→} from '@/components/merchant/AdditionalModules';
+    54→import OrdersModule from '@/components/orders/OrdersModule';
+    55→
+    56→import {
+    57→  LayoutDashboard, ShoppingBag, Package, FolderOpen, Users, Megaphone,
+    58→  Tag, CreditCard, FileText, Truck, Bike, BarChart3, Settings, Zap,
+    59→  Plus, Search, Filter, MoreVertical, Edit, Trash2, Eye,
+    60→  ArrowUpDown, ChevronLeft, X, Check, Star, TrendingUp, TrendingDown,
+    61→  DollarSign, Clock, AlertCircle, Menu, Bell,
+    62→} from 'lucide-react';
+    63→
+    64→// ───────────────────────────── NAVIGATION ITEMS ─────────────────────────────
+    65→const NAV_ITEMS = [
+    66→  { label: 'الرئيسية', icon: LayoutDashboard, view: 'merchant-dashboard' as const },
+    67→  { label: 'الطلبات', icon: ShoppingBag, view: 'orders' as const },
+    68→  { label: 'المنتجات', icon: Package, view: 'products' as const },
+    69→  { label: 'التصنيفات', icon: FolderOpen, view: 'categories' as const },
+    70→  { label: 'العملاء', icon: Users, view: 'customers' as const },
+    71→  { label: 'الحملات', icon: Megaphone, view: 'campaigns' as const },
+    72→  { label: 'الكوبونات', icon: Tag, view: 'coupons' as const },
+    73→  { label: 'المدفوعات', icon: CreditCard, view: 'payments' as const },
+    74→  { label: 'الفواتير', icon: FileText, view: 'invoices' as const },
+    75→  { label: 'التوصيل', icon: Truck, view: 'delivery' as const },
+    76→  { label: 'المندوبون', icon: Bike, view: 'delivery-agents' as const },
+    77→  { label: 'التقارير', icon: BarChart3, view: 'reports' as const },
+    78→  { label: 'الأتمتة', icon: Zap, view: 'automation' as const },
+    79→  { label: 'إعدادات المتجر', icon: Settings, view: 'settings' as const },
+    80→];
+    81→
+    82→// ───────────────────────────── STAT CARDS CONFIG ─────────────────────────────
+    83→const STAT_CARDS = [
+    84→  { label: 'إجمالي الطلبات', value: MERCHANT_STATS.totalOrders, icon: ShoppingBag, bg: 'bg-emerald-50', iconBg: 'bg-emerald-100 text-emerald-700' },
+    85→  { label: 'طلبات جديدة', value: MERCHANT_STATS.newOrders, icon: Clock, bg: 'bg-blue-50', iconBg: 'bg-blue-100 text-blue-700' },
+    86→  { label: 'الزبائن', value: MERCHANT_STATS.customers, icon: Users, bg: 'bg-purple-50', iconBg: 'bg-purple-100 text-purple-700' },
+    87→  { label: 'المنتجات', value: MERCHANT_STATS.products, icon: Package, bg: 'bg-cyan-50', iconBg: 'bg-cyan-100 text-cyan-700' },
+    88→  { label: 'الإيرادات', value: formatMRU(MERCHANT_STATS.revenue), icon: DollarSign, bg: 'bg-amber-50', iconBg: 'bg-amber-100 text-amber-700' },
+    89→  { label: 'الحملات النشطة', value: MERCHANT_STATS.activeCampaigns, icon: Megaphone, bg: 'bg-orange-50', iconBg: 'bg-orange-100 text-orange-700' },
+    90→  { label: 'مدفوعات معلقة', value: MERCHANT_STATS.pendingPayments, icon: CreditCard, bg: 'bg-red-50', iconBg: 'bg-red-100 text-red-700' },
+    91→  { label: 'طلبات التوصيل', value: MERCHANT_STATS.deliveryOrders, icon: Truck, bg: 'bg-indigo-50', iconBg: 'bg-indigo-100 text-indigo-700' },
+    92→];
+    93→
+    94→// ─────────────────────────────────── INVOICE STATUS LABELS ──────────────────
+    95→const INVOICE_STATUS_LABELS: Record<string, string> = {
+    96→  draft: 'مسودة',
+    97→  pending_payment: 'بانتظار الدفع',
+    98→  paid: 'مدفوعة',
+    99→  rejected: 'مرفوضة',
+   100→  cancelled: 'ملغاة',
+   101→  refunded: 'مستردة',
+   102→};
+   103→
+   104→const INVOICE_STATUS_COLORS: Record<string, string> = {
+   105→  draft: 'bg-gray-100 text-gray-700',
+   106→  pending_payment: 'bg-yellow-100 text-yellow-800',
+   107→  paid: 'bg-green-100 text-green-800',
+   108→  rejected: 'bg-red-100 text-red-800',
+   109→  cancelled: 'bg-rose-100 text-rose-800',
+   110→  refunded: 'bg-purple-100 text-purple-800',
+   111→};
+   112→
+   113→// ═══════════════════════════════════════════════════════════════════════════
+   114→//  SIDEBAR COMPONENT
+   115→// ═══════════════════════════════════════════════════════════════════════════
+   116→function Sidebar() {
+   117→  const { currentView, setView, sidebarOpen, setSidebarOpen } = useApp();
+   118→  const isMobile = useIsMobile();
+   119→
+   120→  const sidebarContent = (
+   121→    <div className="flex flex-col h-full bg-[#0F7A4F] text-white">
+   122→      {/* Logo */}
+   123→      <div className="p-5 pb-6 border-b border-white/15">
+   124→        <h1 className="text-2xl font-bold tracking-tight">دكاني</h1>
+   125→        <p className="text-sm text-white/70 mt-1">بوتيك النخبة</p>
+   126→      </div>
+   127→
+   128→      {/* Nav Items */}
+   129→      <ScrollArea className="flex-1 py-3 px-3">
+   130→        <nav className="space-y-1">
+   131→          {NAV_ITEMS.map((item) => {
+   132→            const isActive = currentView === item.view;
+   133→            const Icon = item.icon;
+   134→            return (
+   135→              <button
+   136→                key={item.view}
+   137→                onClick={() => {
+   138→                  setView(item.view as any);
+   139→                  if (isMobile) setSidebarOpen(false);
+   140→                }}
+   141→                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+   142→                  isActive
+   143→                    ? 'bg-white/15 text-white shadow-sm'
+   144→                    : 'text-white/75 hover:bg-white/10 hover:text-white'
+   145→                }`}
+   146→              >
+   147→                <Icon className="h-[18px] w-[18px] shrink-0" />
+   148→                <span>{item.label}</span>
+   149→              </button>
+   150→            );
+   151→          })}
+   152→        </nav>
+   153→      </ScrollArea>
+   154→
+   155→      {/* Store Owner */}
+   156→      <div className="p-4 border-t border-white/15">
+   157→        <div className="flex items-center gap-3">
+   158→          <Avatar className="h-9 w-9 border-2 border-white/30">
+   159→            <AvatarFallback className="bg-white/20 text-white text-sm font-bold">فأ</AvatarFallback>
+   160→          </Avatar>
+   161→          <div className="flex-1 min-w-0">
+   162→            <p className="text-sm font-medium truncate">فاطمة بنت أحمد</p>
+   163→            <p className="text-xs text-white/60 truncate">صاحبة المتجر</p>
+   164→          </div>
+   165→        </div>
+   166→      </div>
+   167→    </div>
+   168→  );
+   169→
+   170→  // Mobile: Sheet
+   171→  if (isMobile) {
+   172→    return (
+   173→      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+   174→        <SheetContent side="right" className="p-0 w-[280px] bg-transparent border-none">
+   175→          {sidebarContent}
+   176→        </SheetContent>
+   177→      </Sheet>
+   178→    );
+   179→  }
+   180→
+   181→  // Desktop: Fixed sidebar
+   182→  return (
+   183→    <aside className="fixed top-0 right-0 bottom-0 w-[260px] z-30 shadow-lg">
+   184→      {sidebarContent}
+   185→    </aside>
+   186→  );
+   187→}
+   188→
+   189→// ═══════════════════════════════════════════════════════════════════════════
+   190→//  TOP BAR
+   191→// ═══════════════════════════════════════════════════════════════════════════
+   192→function TopBar() {
+   193→  const { toggleSidebar } = useApp();
+   194→  const isMobile = useIsMobile();
+   195→  const currentView = useApp().currentView;
+   196→  const viewLabel = NAV_ITEMS.find(n => n.view === currentView)?.label || 'الرئيسية';
+   197→
+   198→  return (
+   199→    <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100">
+   200→      <div className="flex items-center justify-between px-4 md:px-6 h-14">
+   201→        <div className="flex items-center gap-3">
+   202→          {isMobile && (
+   203→            <Button variant="ghost" size="icon" onClick={toggleSidebar} className="shrink-0">
+   204→              <Menu className="h-5 w-5" />
+   205→            </Button>
+   206→          )}
+   207→          <div>
+   208→            <h2 className="text-base md:text-lg font-bold text-gray-900">{viewLabel}</h2>
+   209→            <p className="text-xs text-gray-500 hidden sm:block">بوتيك النخبة</p>
+   210→          </div>
+   211→        </div>
+   212→        <div className="flex items-center gap-2">
+   213→          <Tooltip>
+   214→            <TooltipTrigger asChild>
+   215→              <Button variant="ghost" size="icon" className="relative">
+   216→                <Bell className="h-5 w-5 text-gray-600" />
+   217→                <span className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-red-500" />
+   218→              </Button>
+   219→            </TooltipTrigger>
+   220→            <TooltipContent>الإشعارات</TooltipContent>
+   221→          </Tooltip>
+   222→          <Avatar className="h-8 w-8 border-2 border-gray-200">
+   223→            <AvatarFallback className="bg-[#0F7A4F] text-white text-xs font-bold">فأ</AvatarFallback>
+   224→          </Avatar>
+   225→        </div>
+   226→      </div>
+   227→    </header>
+   228→  );
+   229→}
+   230→
+   231→// ═══════════════════════════════════════════════════════════════════════════
+   232→//  DASHBOARD OVERVIEW
+   233→// ═══════════════════════════════════════════════════════════════════════════
+   234→function DashboardOverview() {
+   235→  const { setView } = useApp();
+   236→  const latestOrders = DEMO_ORDERS.slice(0, 5);
+   237→  const bestSellers = DEMO_PRODUCTS.filter(p => p.isBestSeller).slice(0, 3);
+   238→
+   239→  return (
+   240→    <div className="space-y-6">
+   241→      {/* Stat Cards */}
+   242→      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+   243→        {STAT_CARDS.map((stat) => {
+   244→          const Icon = stat.icon;
+   245→          return (
+   246→            <Card key={stat.label} className="rounded-xl border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+   247→              <CardContent className="p-4 flex items-center gap-4">
+   248→                <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${stat.iconBg}`}>
+   249→                  <Icon className="h-5 w-5" />
+   250→                </div>
+   251→                <div className="min-w-0">
+   252→                  <p className="text-xs text-gray-500 truncate">{stat.label}</p>
+   253→                  <p className="text-lg font-bold text-gray-900 truncate">{stat.value}</p>
+   254→                </div>
+   255→              </CardContent>
+   256→            </Card>
+   257→          );
+   258→        })}
+   259→      </div>
+   260→
+   261→      {/* Recent Orders */}
+   262→      <Card className="rounded-xl border-gray-100 shadow-sm">
+   263→        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+   264→          <CardTitle className="text-base font-bold">الطلبات الأخيرة</CardTitle>
+   265→          <Button variant="ghost" size="sm" className="text-[#0F7A4F] text-xs" onClick={() => setView('orders')}>
+   266→            عرض الكل
+   267→            <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+   268→          </Button>
+   269→        </CardHeader>
+   270→        <CardContent className="p-0">
+   271→          <div className="overflow-x-auto">
+   272→            <Table>
+   273→              <TableHeader>
+   274→                <TableRow className="hover:bg-transparent border-gray-100">
+   275→                  <TableHead className="text-xs font-semibold text-gray-500">رقم الطلب</TableHead>
+   276→                  <TableHead className="text-xs font-semibold text-gray-500">الزبون</TableHead>
+   277→                  <TableHead className="text-xs font-semibold text-gray-500">المبلغ</TableHead>
+   278→                  <TableHead className="text-xs font-semibold text-gray-500">الحالة</TableHead>
+   279→                  <TableHead className="text-xs font-semibold text-gray-500 hidden md:table-cell">المصدر</TableHead>
+   280→                  <TableHead className="text-xs font-semibold text-gray-500 hidden lg:table-cell">التاريخ</TableHead>
+   281→                </TableRow>
+   282→              </TableHeader>
+   283→              <TableBody>
+   284→                {latestOrders.map((order) => (
+   285→                  <TableRow
+   286→                    key={order.id}
+   287→                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+   288→                    onClick={() => setView('order-details', { id: order.id })}
+   289→                  >
+   290→                    <TableCell className="text-sm font-medium text-gray-900">{order.orderNumber}</TableCell>
+   291→                    <TableCell className="text-sm text-gray-700">{order.customerName}</TableCell>
+   292→                    <TableCell className="text-sm font-medium text-gray-900">{formatMRU(order.total)}</TableCell>
+   293→                    <TableCell>
+   294→                      <Badge variant="secondary" className={`text-[10px] px-2 py-0.5 rounded-full ${ORDER_STATUS_COLORS[order.status]}`}>
+   295→                        {ORDER_STATUS_LABELS[order.status]}
+   296→                      </Badge>
+   297→                    </TableCell>
+   298→                    <TableCell className="text-sm text-gray-600 hidden md:table-cell">{order.source}</TableCell>
+   299→                    <TableCell className="text-sm text-gray-500 hidden lg:table-cell">
+   300→                      {new Date(order.createdAt).toLocaleDateString('ar-MR')}
+   301→                    </TableCell>
+   302→                  </TableRow>
+   303→                ))}
+   304→              </TableBody>
+   305→            </Table>
+   306→          </div>
+   307→        </CardContent>
+   308→      </Card>
+   309→
+   310→      {/* Best Sellers */}
+   311→      <Card className="rounded-xl border-gray-100 shadow-sm">
+   312→        <CardHeader className="pb-3">
+   313→          <CardTitle className="text-base font-bold">المنتجات الأكثر مبيعاً</CardTitle>
+   314→        </CardHeader>
+   315→        <CardContent>
+   316→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   317→            {bestSellers.map((product, idx) => (
+   318→              <div key={product.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+   319→                <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
+   320→                  <Package className="h-5 w-5 text-gray-400" />
+   321→                </div>
+   322→                <div className="min-w-0 flex-1">
+   323→                  <div className="flex items-center gap-1.5">
+   324→                    {idx < 3 && (
+   325→                      <span className="flex items-center justify-center h-5 w-5 rounded-full bg-[#D6A84F] text-white text-[10px] font-bold">
+   326→                        {idx + 1}
+   327→                      </span>
+   328→                    )}
+   329→                    <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+   330→                  </div>
+   331→                  <p className="text-sm font-bold text-[#0F7A4F] mt-0.5">{formatMRU(product.price)}</p>
+   332→                </div>
+   333→                <Star className="h-4 w-4 text-[#D6A84F] fill-[#D6A84F] shrink-0" />
+   334→              </div>
+   335→            ))}
+   336→          </div>
+   337→        </CardContent>
+   338→      </Card>
+   339→    </div>
+   340→  );
+   341→}
+   342→
+   343→// ═══════════════════════════════════════════════════════════════════════════
+   344→//  PRODUCTS VIEW
+   345→// ═══════════════════════════════════════════════════════════════════════════
+   346→function ProductsView() {
+   347→  const { setView } = useApp();
+   348→  const [searchQuery, setSearchQuery] = useState('');
+   349→  const [categoryFilter, setCategoryFilter] = useState('all');
+   350→  const [statusFilter, setStatusFilter] = useState('all');
+   351→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   352→  const [selectedProduct, setSelectedProduct] = useState<DemoProduct | null>(null);
+   353→
+   354→  const filteredProducts = useMemo(() => {
+   355→    return DEMO_PRODUCTS.filter((p) => {
+   356→      const matchesSearch = p.name.includes(searchQuery) || p.description.includes(searchQuery);
+   357→      const matchesCategory = categoryFilter === 'all' || p.categoryId === categoryFilter;
+   358→      const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+   359→      return matchesSearch && matchesCategory && matchesStatus;
+   360→    });
+   361→  }, [searchQuery, categoryFilter, statusFilter]);
+   362→
+   363→  const storeCategories = DEMO_CATEGORIES.filter(c => c.storeId === 's1');
+   364→
+   365→  return (
+   366→    <div className="space-y-5">
+   367→      {/* Header */}
+   368→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   369→        <div>
+   370→          <h3 className="text-lg font-bold text-gray-900">المنتجات</h3>
+   371→          <p className="text-sm text-gray-500">{DEMO_PRODUCTS.length} منتج</p>
+   372→        </div>
+   373→        <Button
+   374→          onClick={() => setView('product-form')}
+   375→          className="bg-[#0F7A4F] hover:bg-[#0D6843] text-white rounded-lg shadow-sm"
+   376→        >
+   377→          <Plus className="h-4 w-4 ml-2" />
+   378→          إضافة منتج
+   379→        </Button>
+   380→      </div>
+   381→
+   382→      {/* Filters */}
+   383→      <Card className="rounded-xl border-gray-100 shadow-sm">
+   384→        <CardContent className="p-4">
+   385→          <div className="flex flex-col sm:flex-row gap-3">
+   386→            <div className="relative flex-1">
+   387→              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   388→              <Input
+   389→                placeholder="ابحث عن منتج..."
+   390→                value={searchQuery}
+   391→                onChange={(e) => setSearchQuery(e.target.value)}
+   392→                className="pr-9 rounded-lg"
+   393→              />
+   394→            </div>
+   395→            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+   396→              <SelectTrigger className="w-full sm:w-[180px] rounded-lg">
+   397→                <SelectValue placeholder="التصنيف" />
+   398→              </SelectTrigger>
+   399→              <SelectContent>
+   400→                <SelectItem value="all">جميع التصنيفات</SelectItem>
+   401→                {storeCategories.map((cat) => (
+   402→                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+   403→                ))}
+   404→              </SelectContent>
+   405→            </Select>
+   406→            <Select value={statusFilter} onValueChange={setStatusFilter}>
+   407→              <SelectTrigger className="w-full sm:w-[150px] rounded-lg">
+   408→                <SelectValue placeholder="الحالة" />
+   409→              </SelectTrigger>
+   410→              <SelectContent>
+   411→                <SelectItem value="all">جميع الحالات</SelectItem>
+   412→                <SelectItem value="available">متوفر</SelectItem>
+   413→                <SelectItem value="unavailable">غير متوفر</SelectItem>
+   414→              </SelectContent>
+   415→            </Select>
+   416→          </div>
+   417→        </CardContent>
+   418→      </Card>
+   419→
+   420→      {/* Product Grid */}
+   421→      {filteredProducts.length === 0 ? (
+   422→        <Card className="rounded-xl border-gray-100 shadow-sm">
+   423→          <CardContent className="py-16 text-center">
+   424→            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+   425→            <p className="text-gray-500 font-medium">لا توجد منتجات</p>
+   426→            <p className="text-sm text-gray-400 mt-1">حاول تعديل معايير البحث</p>
+   427→          </CardContent>
+   428→        </Card>
+   429→      ) : (
+   430→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   431→          {filteredProducts.map((product) => (
+   432→            <Card key={product.id} className="rounded-xl border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
+   433→              {/* Image Placeholder */}
+   434→              <div className="h-40 bg-gray-100 flex items-center justify-center relative">
+   435→                <Package className="h-10 w-10 text-gray-300" />
+   436→                {product.isBestSeller && (
+   437→                  <Badge className="absolute top-3 right-3 bg-[#D6A84F] text-white text-[10px] px-2 py-0.5 rounded-full">
+   438→                    <Star className="h-3 w-3 ml-1 fill-current" />
+   439→                    الأكثر مبيعاً
+   440→                  </Badge>
+   441→                )}
+   442→                <Badge
+   443→                  variant="secondary"
+   444→                  className={`absolute top-3 left-3 text-[10px] px-2 py-0.5 rounded-full ${
+   445→                    product.status === 'available'
+   446→                      ? 'bg-green-100 text-green-700'
+   447→                      : 'bg-red-100 text-red-700'
+   448→                  }`}
+   449→                >
+   450→                  {product.status === 'available' ? 'متوفر' : 'غير متوفر'}
+   451→                </Badge>
+   452→              </div>
+   453→              <CardContent className="p-4">
+   454→                <div className="flex items-start justify-between gap-2">
+   455→                  <div className="min-w-0">
+   456→                    <h4 className="text-sm font-bold text-gray-900 truncate">{product.name}</h4>
+   457→                    <div className="flex items-center gap-2 mt-1.5">
+   458→                      <span className="text-sm font-bold text-[#0F7A4F]">{formatMRU(product.price)}</span>
+   459→                      {product.compareAtPrice && (
+   460→                        <span className="text-xs text-gray-400 line-through">
+   461→                          {formatMRU(product.compareAtPrice)}
+   462→                        </span>
+   463→                      )}
+   464→                    </div>
+   465→                    <p className="text-xs text-gray-500 mt-1">المخزون: {product.stockQuantity} قطعة</p>
+   466→                  </div>
+   467→                  <DropdownMenu>
+   468→                    <DropdownMenuTrigger asChild>
+   469→                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+   470→                        <MoreVertical className="h-4 w-4" />
+   471→                      </Button>
+   472→                    </DropdownMenuTrigger>
+   473→                    <DropdownMenuContent align="start">
+   474→                      <DropdownMenuItem onClick={() => setView('product-form', { id: product.id })}>
+   475→                        <Edit className="h-4 w-4 ml-2" />
+   476→                        تعديل
+   477→                      </DropdownMenuItem>
+   478→                      <DropdownMenuItem
+   479→                        className="text-red-600"
+   480→                        onClick={() => {
+   481→                          setSelectedProduct(product);
+   482→                          setDeleteDialogOpen(true);
+   483→                        }}
+   484→                      >
+   485→                        <Trash2 className="h-4 w-4 ml-2" />
+   486→                        حذف
+   487→                      </DropdownMenuItem>
+   488→                    </DropdownMenuContent>
+   489→                  </DropdownMenu>
+   490→                </div>
+   491→              </CardContent>
+   492→            </Card>
+   493→          ))}
+   494→        </div>
+   495→      )}
+   496→
+   497→      {/* Delete Dialog */}
+   498→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   499→        <DialogContent className="rounded-xl">
+   500→          <DialogHeader>
+   501→            <DialogTitle>حذف المنتج</DialogTitle>
+   502→            <DialogDescription>
+   503→              هل أنت متأكد من حذف &quot;{selectedProduct?.name}&quot؛؟ لا يمكن التراجع عن هذا الإجراء.
+   504→            </DialogDescription>
+   505→          </DialogHeader>
+   506→          <DialogFooter className="gap-2">
+   507→            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="rounded-lg">
+   508→              إلغاء
+   509→            </Button>
+   510→            <Button
+   511→              variant="destructive"
+   512→              onClick={() => setDeleteDialogOpen(false)}
+   513→              className="rounded-lg"
+   514→            >
+   515→              حذف
+   516→            </Button>
+   517→          </DialogFooter>
+   518→        </DialogContent>
+   519→      </Dialog>
+   520→    </div>
+   521→  );
+   522→}
+   523→
+   524→// ═══════════════════════════════════════════════════════════════════════════
+   525→//  PRODUCT FORM VIEW
+   526→// ═══════════════════════════════════════════════════════════════════════════
+   527→function ProductFormView() {
+   528→  const { viewParams, setView, goBack } = useApp();
+   529→  const isEditing = !!viewParams?.id;
+   530→  const storeCategories = DEMO_CATEGORIES.filter(c => c.storeId === 's1');
+   531→
+   532→  const [name, setName] = useState(isEditing ? DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.name || '' : '');
+   533→  const [description, setDescription] = useState(isEditing ? DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.description || '' : '');
+   534→  const [price, setPrice] = useState(isEditing ? String(DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.price || '') : '');
+   535→  const [compareAtPrice, setCompareAtPrice] = useState(isEditing ? String(DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.compareAtPrice || '') : '');
+   536→  const [categoryId, setCategoryId] = useState(isEditing ? DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.categoryId || '' : '');
+   537→  const [status, setStatus] = useState(isEditing ? DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.status || 'available' : 'available');
+   538→  const [stockQuantity, setStockQuantity] = useState(isEditing ? String(DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.stockQuantity || '') : '');
+   539→  const [sizes, setSizes] = useState(isEditing ? DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.sizes.join(', ') || '' : '');
+   540→  const [colors, setColors] = useState(isEditing ? DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.colors.join(', ') || '' : '');
+   541→  const [sku, setSku] = useState(isEditing ? DEMO_PRODUCTS.find(p => p.id === viewParams.id)?.sku || '' : '');
+   542→  const [customDeliveryCost, setCustomDeliveryCost] = useState('');
+   543→
+   544→  return (
+   545→    <div className="space-y-5 max-w-3xl">
+   546→      <div className="flex items-center gap-3">
+   547→        <Button variant="ghost" size="icon" onClick={goBack} className="shrink-0">
+   548→          <ChevronLeft className="h-5 w-5" />
+   549→        </Button>
+   550→        <div>
+   551→          <h3 className="text-lg font-bold text-gray-900">
+   552→            {isEditing ? 'تعديل المنتج' : 'إضافة منتج جديد'}
+   553→          </h3>
+   554→          <p className="text-sm text-gray-500">أدخل بيانات المنتج</p>
+   555→        </div>
+   556→      </div>
+   557→
+   558→      <Card className="rounded-xl border-gray-100 shadow-sm">
+   559→        <CardContent className="p-5 space-y-5">
+   560→          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+   561→            <div className="space-y-2">
+   562→              <Label className="text-sm font-medium text-gray-700">اسم المنتج *</Label>
+   563→              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: عباية كتان فاخرة" className="rounded-lg" />
+   564→            </div>
+   565→            <div className="space-y-2">
+   566→              <Label className="text-sm font-medium text-gray-700">التصنيف *</Label>
+   567→              <Select value={categoryId} onValueChange={setCategoryId}>
+   568→                <SelectTrigger className="rounded-lg">
+   569→                  <SelectValue placeholder="اختر التصنيف" />
+   570→                </SelectTrigger>
+   571→                <SelectContent>
+   572→                  {storeCategories.map((cat) => (
+   573→                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+   574→                  ))}
+   575→                </SelectContent>
+   576→              </Select>
+   577→            </div>
+   578→          </div>
+   579→
+   580→          <div className="space-y-2">
+   581→            <Label className="text-sm font-medium text-gray-700">الوصف</Label>
+   582→            <Textarea
+   583→              value={description}
+   584→              onChange={(e) => setDescription(e.target.value)}
+   585→              placeholder="وصف تفصيلي للمنتج..."
+   586→              rows={4}
+   587→              className="rounded-lg resize-none"
+   588→            />
+   589→          </div>
+   590→
+   591→          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+   592→            <div className="space-y-2">
+   593→              <Label className="text-sm font-medium text-gray-700">السعر (أوقية) *</Label>
+   594→              <Input
+   595→                type="number"
+   596→                value={price}
+   597→                onChange={(e) => setPrice(e.target.value)}
+   598→                placeholder="0"
+   599→                className="rounded-lg"
+   600→              />
+   601→            </div>
+   602→            <div className="space-y-2">
+   603→              <Label className="text-sm font-medium text-gray-700">سعر المقارنة</Label>
+   604→              <Input
+   605→                type="number"
+   606→                value={compareAtPrice}
+   607→                onChange={(e) => setCompareAtPrice(e.target.value)}
+   608→                placeholder="اختياري"
+   609→                className="rounded-lg"
+   610→              />
+   611→            </div>
+   612→            <div className="space-y-2">
+   613→              <Label className="text-sm font-medium text-gray-700">الكمية في المخزون *</Label>
+   614→              <Input
+   615→                type="number"
+   616→                value={stockQuantity}
+   617→                onChange={(e) => setStockQuantity(e.target.value)}
+   618→                placeholder="0"
+   619→                className="rounded-lg"
+   620→              />
+   621→            </div>
+   622→          </div>
+   623→
+   624→          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+   625→            <div className="space-y-2">
+   626→              <Label className="text-sm font-medium text-gray-700">الحالة</Label>
+   627→              <Select value={status} onValueChange={(v) => setStatus(v as 'available' | 'unavailable')}>
+   628→                <SelectTrigger className="rounded-lg">
+   629→                  <SelectValue />
+   630→                </SelectTrigger>
+   631→                <SelectContent>
+   632→                  <SelectItem value="available">متوفر</SelectItem>
+   633→                  <SelectItem value="unavailable">غير متوفر</SelectItem>
+   634→                </SelectContent>
+   635→              </Select>
+   636→            </div>
+   637→            <div className="space-y-2">
+   638→              <Label className="text-sm font-medium text-gray-700">المقاسات</Label>
+   639→              <Input
+   640→                value={sizes}
+   641→                onChange={(e) => setSizes(e.target.value)}
+   642→                placeholder="مفصولة بفاصلة: M, L, XL"
+   643→                className="rounded-lg"
+   644→              />
+   645→            </div>
+   646→            <div className="space-y-2">
+   647→              <Label className="text-sm font-medium text-gray-700">الألوان</Label>
+   648→              <Input
+   649→                value={colors}
+   650→                onChange={(e) => setColors(e.target.value)}
+   651→                placeholder="مفصولة بفاصلة: أسود, بني"
+   652→                className="rounded-lg"
+   653→              />
+   654→            </div>
+   655→          </div>
+   656→
+   657→          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+   658→            <div className="space-y-2">
+   659→              <Label className="text-sm font-medium text-gray-700">كود المنتج SKU</Label>
+   660→              <Input
+   661→                value={sku}
+   662→                onChange={(e) => setSku(e.target.value)}
+   663→                placeholder="مثال: ABA-001"
+   664→                className="rounded-lg"
+   665→              />
+   666→            </div>
+   667→            <div className="space-y-2">
+   668→              <Label className="text-sm font-medium text-gray-700">تكلفة توصيل مخصصة</Label>
+   669→              <Input
+   670→                type="number"
+   671→                value={customDeliveryCost}
+   672→                onChange={(e) => setCustomDeliveryCost(e.target.value)}
+   673→                placeholder="اختياري"
+   674→                className="rounded-lg"
+   675→              />
+   676→            </div>
+   677→          </div>
+   678→
+   679→          {/* Image Upload */}
+   680→          <div className="space-y-2">
+   681→            <Label className="text-sm font-medium text-gray-700">رفع الصور</Label>
+   682→            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#0F7A4F] hover:bg-[#0F7A4F]/5 transition-colors cursor-pointer">
+   683→              <Package className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+   684→              <p className="text-sm text-gray-500">اضغط أو اسحب الصور هنا</p>
+   685→              <p className="text-xs text-gray-400 mt-1">PNG, JPG حتى 5MB</p>
+   686→            </div>
+   687→          </div>
+   688→        </CardContent>
+   689→      </Card>
+   690→
+   691→      {/* Actions */}
+   692→      <div className="flex items-center gap-3">
+   693→        <Button
+   694→          onClick={() => setView('products')}
+   695→          className="bg-[#0F7A4F] hover:bg-[#0D6843] text-white rounded-lg shadow-sm"
+   696→        >
+   697→          <Check className="h-4 w-4 ml-2" />
+   698→          حفظ المنتج
+   699→        </Button>
+   700→        <Button variant="outline" onClick={goBack} className="rounded-lg">
+   701→          إلغاء
+   702→        </Button>
+   703→      </div>
+   704→    </div>
+   705→  );
+   706→}
+   707→
+   708→// ═══════════════════════════════════════════════════════════════════════════
+   709→//  CATEGORIES VIEW
+   710→// ═══════════════════════════════════════════════════════════════════════════
+   711→function CategoriesView() {
+   712→  const [dialogOpen, setDialogOpen] = useState(false);
+   713→  const [editCat, setEditCat] = useState<DemoCategory | null>(null);
+   714→  const [catName, setCatName] = useState('');
+   715→  const [catStatus, setCatStatus] = useState<'active' | 'inactive'>('active');
+   716→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+   717→  const [selectedCat, setSelectedCat] = useState<DemoCategory | null>(null);
+   718→
+   719→  const storeCategories = DEMO_CATEGORIES.filter(c => c.storeId === 's1');
+   720→
+   721→  const openAdd = () => {
+   722→    setEditCat(null);
+   723→    setCatName('');
+   724→    setCatStatus('active');
+   725→    setDialogOpen(true);
+   726→  };
+   727→
+   728→  const openEdit = (cat: DemoCategory) => {
+   729→    setEditCat(cat);
+   730→    setCatName(cat.name);
+   731→    setCatStatus(cat.status);
+   732→    setDialogOpen(true);
+   733→  };
+   734→
+   735→  return (
+   736→    <div className="space-y-5">
+   737→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   738→        <div>
+   739→          <h3 className="text-lg font-bold text-gray-900">التصنيفات</h3>
+   740→          <p className="text-sm text-gray-500">{storeCategories.length} تصنيف</p>
+   741→        </div>
+   742→        <Button onClick={openAdd} className="bg-[#0F7A4F] hover:bg-[#0D6843] text-white rounded-lg shadow-sm">
+   743→          <Plus className="h-4 w-4 ml-2" />
+   744→          إضافة تصنيف
+   745→        </Button>
+   746→      </div>
+   747→
+   748→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   749→        {storeCategories.map((cat) => (
+   750→          <Card key={cat.id} className="rounded-xl border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+   751→            <CardContent className="p-4">
+   752→              <div className="flex items-start justify-between gap-2">
+   753→                <div className="flex items-center gap-3 min-w-0">
+   754→                  <div className="h-10 w-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+   755→                    <FolderOpen className="h-5 w-5 text-[#0F7A4F]" />
+   756→                  </div>
+   757→                  <div className="min-w-0">
+   758→                    <h4 className="text-sm font-bold text-gray-900 truncate">{cat.name}</h4>
+   759→                    <p className="text-xs text-gray-500 mt-0.5">{cat.productCount} منتج</p>
+   760→                  </div>
+   761→                </div>
+   762→                <Badge
+   763→                  variant="secondary"
+   764→                  className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${
+   765→                    cat.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+   766→                  }`}
+   767→                >
+   768→                  {cat.status === 'active' ? 'نشط' : 'غير نشط'}
+   769→                </Badge>
+   770→              </div>
+   771→              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-100">
+   772→                <Button variant="ghost" size="sm" className="text-[#0F7A4F] text-xs flex-1" onClick={() => openEdit(cat)}>
+   773→                  <Edit className="h-3.5 w-3.5 ml-1" />
+   774→                  تعديل
+   775→                </Button>
+   776→                <Button
+   777→                  variant="ghost"
+   778→                  size="sm"
+   779→                  className="text-red-600 text-xs flex-1"
+   780→                  onClick={() => {
+   781→                    setSelectedCat(cat);
+   782→                    setDeleteDialogOpen(true);
+   783→                  }}
+   784→                >
+   785→                  <Trash2 className="h-3.5 w-3.5 ml-1" />
+   786→                  حذف
+   787→                </Button>
+   788→              </div>
+   789→            </CardContent>
+   790→          </Card>
+   791→        ))}
+   792→      </div>
+   793→
+   794→      {/* Add/Edit Dialog */}
+   795→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   796→        <DialogContent className="rounded-xl">
+   797→          <DialogHeader>
+   798→            <DialogTitle>{editCat ? 'تعديل التصنيف' : 'إضافة تصنيف جديد'}</DialogTitle>
+   799→            <DialogDescription>
+   800→              {editCat ? 'قم بتعديل بيانات التصنيف' : 'أدخل بيانات التصنيف الجديد'}
+   801→            </DialogDescription>
+   802→          </DialogHeader>
+   803→          <div className="space-y-4 py-2">
+   804→            <div className="space-y-2">
+   805→              <Label className="text-sm font-medium text-gray-700">اسم التصنيف</Label>
+   806→              <Input
+   807→                value={catName}
+   808→                onChange={(e) => setCatName(e.target.value)}
+   809→                placeholder="مثال: عبايات"
+   810→                className="rounded-lg"
+   811→              />
+   812→            </div>
+   813→            <div className="space-y-2">
+   814→              <Label className="text-sm font-medium text-gray-700">الحالة</Label>
+   815→              <Select value={catStatus} onValueChange={(v) => setCatStatus(v as 'active' | 'inactive')}>
+   816→                <SelectTrigger className="rounded-lg">
+   817→                  <SelectValue />
+   818→                </SelectTrigger>
+   819→                <SelectContent>
+   820→                  <SelectItem value="active">نشط</SelectItem>
+   821→                  <SelectItem value="inactive">غير نشط</SelectItem>
+   822→                </SelectContent>
+   823→              </Select>
+   824→            </div>
+   825→          </div>
+   826→          <DialogFooter className="gap-2">
+   827→            <Button variant="outline" onClick={() => setDialogOpen(false)} className="rounded-lg">إلغاء</Button>
+   828→            <Button onClick={() => setDialogOpen(false)} className="bg-[#0F7A4F] hover:bg-[#0D6843] text-white rounded-lg">
+   829→              <Check className="h-4 w-4 ml-1" />
+   830→              حفظ
+   831→            </Button>
+   832→          </DialogFooter>
+   833→        </DialogContent>
+   834→      </Dialog>
+   835→
+   836→      {/* Delete Dialog */}
+   837→      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   838→        <DialogContent className="rounded-xl">
+   839→          <DialogHeader>
+   840→            <DialogTitle>حذف التصنيف</DialogTitle>
+   841→            <DialogDescription>
+   842→              هل أنت متأكد من حذف &quot;{selectedCat?.name}&quot؛؟
+   843→            </DialogDescription>
+   844→          </DialogHeader>
+   845→          <DialogFooter className="gap-2">
+   846→            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="rounded-lg">إلغاء</Button>
+   847→            <Button variant="destructive" onClick={() => setDeleteDialogOpen(false)} className="rounded-lg">حذف</Button>
+   848→          </DialogFooter>
+   849→        </DialogContent>
+   850→      </Dialog>
+   851→    </div>
+   852→  );
+   853→}
+   854→
+   855→// ═══════════════════════════════════════════════════════════════════════════
+   856→//  REPORTS VIEW
+   857→// ═══════════════════════════════════════════════════════════════════════════
+   858→function ReportsView() {
+   859→  const monthlyData = [
+   860→    { month: 'يناير', orders: 12, revenue: 45000 },
+   861→    { month: 'فبراير', orders: 18, revenue: 72000 },
+   862→    { month: 'مارس', orders: 25, revenue: 110000 },
+   863→    { month: 'أبريل', orders: 22, revenue: 95000 },
+   864→    { month: 'مايو', orders: 30, revenue: 135000 },
+   865→    { month: 'يونيو', orders: 28, revenue: 120000 },
+   866→    { month: 'يوليو', orders: 21, revenue: 89000 },
+   867→  ];
+   868→  const maxOrders = Math.max(...monthlyData.map(d => d.orders));
+   869→
+   870→  const topProducts = DEMO_PRODUCTS.filter(p => p.isBestSeller).slice(0, 5);
+   871→
+   872→  const sourceData = [
+   873→    { source: 'واتساب', count: 65, percent: 42, color: 'bg-[#25D366]' },
+   874→    { source: 'انستغرام', count: 35, percent: 22, color: 'bg-pink-500' },
+   875→    { source: 'فيسبوك', count: 20, percent: 13, color: 'bg-blue-600' },
+   876→    { source: 'رابط مباشر', count: 18, percent: 12, color: 'bg-[#0F7A4F]' },
+   877→    { source: 'أخرى', count: 18, percent: 11, color: 'bg-gray-400' },
+   878→  ];
+   879→
+   880→  return (
+   881→    <div className="space-y-6">
+   882→      {/* Summary Stats */}
+   883→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   884→        <Card className="rounded-xl border-gray-100 shadow-sm">
+   885→          <CardContent className="p-4 text-center">
+   886→            <TrendingUp className="h-6 w-6 text-[#0F7A4F] mx-auto mb-2" />
+   887→            <p className="text-2xl font-bold text-gray-900">156</p>
+   888→            <p className="text-xs text-gray-500 mt-1">إجمالي الطلبات</p>
+   889→          </CardContent>
+   890→        </Card>
+   891→        <Card className="rounded-xl border-gray-100 shadow-sm">
+   892→          <CardContent className="p-4 text-center">
+   893→            <DollarSign className="h-6 w-6 text-[#D6A84F] mx-auto mb-2" />
+   894→            <p className="text-2xl font-bold text-gray-900">{formatMRU(892000)}</p>
+   895→            <p className="text-xs text-gray-500 mt-1">إجمالي الإيرادات</p>
+   896→          </CardContent>
+   897→        </Card>
+   898→        <Card className="rounded-xl border-gray-100 shadow-sm">
+   899→          <CardContent className="p-4 text-center">
+   900→            <TrendingUp className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+   901→            <p className="text-2xl font-bold text-gray-900">+15%</p>
+   902→            <p className="text-xs text-gray-500 mt-1">نسبة النمو</p>
+   903→          </CardContent>
+   904→        </Card>
+   905→        <Card className="rounded-xl border-gray-100 shadow-sm">
+   906→          <CardContent className="p-4 text-center">
+   907→            <ShoppingBag className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+   908→            <p className="text-2xl font-bold text-gray-900">{formatMRU(5718)}</p>
+   909→            <p className="text-xs text-gray-500 mt-1">متوسط قيمة الطلب</p>
+   910→          </CardContent>
+   911→        </Card>
+   912→      </div>
+   913→
+   914→      {/* Orders Over Time - Bar Chart */}
+   915→      <Card className="rounded-xl border-gray-100 shadow-sm">
+   916→        <CardHeader className="pb-3">
+   917→          <CardTitle className="text-base font-bold">الطلبات عبر الوقت</CardTitle>
+   918→          <CardDescription>عدد الطلبات الشهرية</CardDescription>
+   919→        </CardHeader>
+   920→        <CardContent>
+   921→          <div className="flex items-end gap-2 h-48">
+   922→            {monthlyData.map((d) => (
+   923→              <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
+   924→                <span className="text-[10px] text-gray-500 font-medium">{d.orders}</span>
+   925→                <div
+   926→                  className="w-full rounded-t-md bg-[#0F7A4F] transition-all duration-500 min-h-[4px] hover:bg-[#0D6843]"
+   927→                  style={{ height: `${(d.orders / maxOrders) * 140}px` }}
+   928→                />
+   929→                <span className="text-[10px] text-gray-400">{d.month}</span>
+   930→              </div>
+   931→            ))}
+   932→          </div>
+   933→        </CardContent>
+   934→      </Card>
+   935→
+   936→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   937→        {/* Top Products */}
+   938→        <Card className="rounded-xl border-gray-100 shadow-sm">
+   939→          <CardHeader className="pb-3">
+   940→            <CardTitle className="text-base font-bold">أفضل المنتجات</CardTitle>
+   941→          </CardHeader>
+   942→          <CardContent>
+   943→            <div className="space-y-3">
+   944→              {topProducts.map((product, idx) => (
+   945→                <div key={product.id} className="flex items-center gap-3">
+   946→                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-[#D6A84F] text-white text-[10px] font-bold shrink-0">
+   947→                    {idx + 1}
+   948→                  </span>
+   949→                  <div className="flex-1 min-w-0">
+   950→                    <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+   951→                  </div>
+   952→                  <span className="text-sm font-bold text-[#0F7A4F] shrink-0">{formatMRU(product.price)}</span>
+   953→                </div>
+   954→              ))}
+   955→            </div>
+   956→          </CardContent>
+   957→        </Card>
+   958→
+   959→        {/* Customer Sources */}
+   960→        <Card className="rounded-xl border-gray-100 shadow-sm">
+   961→          <CardHeader className="pb-3">
+   962→            <CardTitle className="text-base font-bold">مصادر الزبائن</CardTitle>
+   963→          </CardHeader>
+   964→          <CardContent>
+   965→            <div className="space-y-4">
+   966→              {sourceData.map((s) => (
+   967→                <div key={s.source} className="space-y-1.5">
+   968→                  <div className="flex items-center justify-between text-sm">
+   969→                    <span className="text-gray-700 font-medium">{s.source}</span>
+   970→                    <span className="text-gray-500">{s.count} ({s.percent}%)</span>
+   971→                  </div>
+   972→                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+   973→                    <div
+   974→                      className={`h-full rounded-full ${s.color} transition-all duration-700`}
+   975→                      style={{ width: `${s.percent}%` }}
+   976→                    />
+   977→                  </div>
+   978→                </div>
+   979→              ))}
+   980→            </div>
+   981→          </CardContent>
+   982→        </Card>
+   983→      </div>
+   984→    </div>
+   985→  );
+   986→}
+   987→
+   988→// ═══════════════════════════════════════════════════════════════════════════
+   989→//  SETTINGS VIEW
+   990→// ═══════════════════════════════════════════════════════════════════════════
+   991→function SettingsView() {
+   992→  const [storeName, setStoreName] = useState('بوتيك النخبة');
+   993→  const [storeDesc, setStoreDesc] = useState('أجمل الأزياء والإكسسوارات النسائية في نواكشوط');
+   994→  const [storePhone, setStorePhone] = useState('22222333');
+   995→  const [storeWhatsapp, setStoreWhatsapp] = useState('22222333');
+   996→  const [storeCity, setStoreCity] = useState('نواكشوط');
+   997→  const [storeLang, setStoreLang] = useState('ar');
+   998→  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
+   999→  const [pickupEnabled, setPickupEnabled] = useState(true);
+  1000→  const [returnPolicy, setReturnPolicy] = useState('يمكن إرجاع المنتج خلال 3 أيام من الاستلام بشرط أن يكون في حالته الأصلية. يتم استرجاع المبلغ خلال 48 ساعة بعد استلام المنتج المرتجع.');
+  1001→  const [freeDeliveryAbove, setFreeDeliveryAbove] = useState('10000');
+  1002→
+  1003→  const teamMembers = [
+  1004→    { name: 'فاطمة بنت أحمد', role: 'صاحبة المتجر', phone: '22222333', avatar: 'فأ' },
+  1005→    { name: 'محمد ولد إبراهيم', role: 'مندوب توصيل', phone: '11223344', avatar: 'مإ' },
+  1006→    { name: 'آمنة محمد', role: 'مديرة الطلبات', phone: '55667788', avatar: 'أم' },
+  1007→  ];
+  1008→
+  1009→  return (
+  1010→    <div className="space-y-5">
+  1011→      <div>
+  1012→        <h3 className="text-lg font-bold text-gray-900">إعدادات المتجر</h3>
+  1013→        <p className="text-sm text-gray-500">إدارة إعدادات متجرك وتفضيلاتك</p>
+  1014→      </div>
+  1015→
+  1016→      <Tabs dir="rtl" className="w-full">
+  1017→        <TabsList className="w-full justify-start overflow-x-auto bg-gray-100 rounded-lg p-1">
+  1018→          <TabsTrigger value="store-info" className="rounded-md text-xs sm:text-sm">معلومات المتجر</TabsTrigger>
+  1019→          <TabsTrigger value="delivery" className="rounded-md text-xs sm:text-sm">التوصيل</TabsTrigger>
+  1020→          <TabsTrigger value="return" className="rounded-md text-xs sm:text-sm">سياسة الإرجاع</TabsTrigger>
+  1021→          <TabsTrigger value="team" className="rounded-md text-xs sm:text-sm">فريق العمل</TabsTrigger>
+  1022→        </TabsList>
+  1023→
+  1024→        <TabsContent value="store-info">
+  1025→          <Card className="rounded-xl border-gray-100 shadow-sm mt-4">
+  1026→            <CardContent className="p-5 space-y-5">
+  1027→              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+  1028→                <div className="space-y-2">
+  1029→                  <Label className="text-sm font-medium text-gray-700">اسم المتجر</Label>
+  1030→                  <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} className="rounded-lg" />
+  1031→                </div>
+  1032→                <div className="space-y-2">
+  1033→                  <Label className="text-sm font-medium text-gray-700">المدينة</Label>
+  1034→                  <Input value={storeCity} onChange={(e) => setStoreCity(e.target.value)} className="rounded-lg" />
+  1035→                </div>
+  1036→              </div>
+  1037→              <div className="space-y-2">
+  1038→                <Label className="text-sm font-medium text-gray-700">وصف المتجر</Label>
+  1039→                <Textarea value={storeDesc} onChange={(e) => setStoreDesc(e.target.value)} rows={3} className="rounded-lg resize-none" />
+  1040→              </div>
+  1041→              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+  1042→                <div className="space-y-2">
+  1043→                  <Label className="text-sm font-medium text-gray-700">رقم الهاتف</Label>
+  1044→                  <Input value={storePhone} onChange={(e) => setStorePhone(e.target.value)} className="rounded-lg" />
+  1045→                </div>
+  1046→                <div className="space-y-2">
+  1047→                  <Label className="text-sm font-medium text-gray-700">واتساب</Label>
+  1048→                  <Input value={storeWhatsapp} onChange={(e) => setStoreWhatsapp(e.target.value)} className="rounded-lg" />
+  1049→                </div>
+  1050→                <div className="space-y-2">
+  1051→                  <Label className="text-sm font-medium text-gray-700">اللغة</Label>
+  1052→                  <Select value={storeLang} onValueChange={setStoreLang}>
+  1053→                    <SelectTrigger className="rounded-lg">
+  1054→                      <SelectValue />
+  1055→                    </SelectTrigger>
+  1056→                    <SelectContent>
+  1057→                      <SelectItem value="ar">العربية</SelectItem>
+  1058→                      <SelectItem value="fr">الفرنسية</SelectItem>
+  1059→                      <SelectItem value="en">الإنجليزية</SelectItem>
+  1060→                    </SelectContent>
+  1061→                  </Select>
+  1062→                </div>
+  1063→              </div>
+  1064→              {/* Logo Upload */}
+  1065→              <div className="space-y-2">
+  1066→                <Label className="text-sm font-medium text-gray-700">شعار المتجر</Label>
+  1067→                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-[#0F7A4F] transition-colors cursor-pointer">
+  1068→                  <Package className="h-8 w-8 text-gray-300 mx-auto mb-1" />
+  1069→                  <p className="text-sm text-gray-500">اضغط لرفع الشعار</p>
+  1070→                  <p className="text-xs text-gray-400">PNG, JPG حتى 2MB</p>
+  1071→                </div>
+  1072→              </div>
+  1073→              <Button className="bg-[#0F7A4F] hover:bg-[#0D6843] text-white rounded-lg shadow-sm">
+  1074→                <Check className="h-4 w-4 ml-2" />
+  1075→                حفظ التغييرات
+  1076→              </Button>
+  1077→            </CardContent>
+  1078→          </Card>
+  1079→        </TabsContent>
+  1080→
+  1081→        <TabsContent value="delivery">
+  1082→          <Card className="rounded-xl border-gray-100 shadow-sm mt-4">
+  1083→            <CardContent className="p-5 space-y-5">
+  1084→              <div className="space-y-4">
+  1085→                <div className="flex items-center justify-between">
+  1086→                  <div>
+  1087→                    <p className="text-sm font-medium text-gray-900">توصيل للمنزل</p>
+  1088→                    <p className="text-xs text-gray-500">تفعيل خدمة التوصيل</p>
+  1089→                  </div>
+  1090→                  <Switch checked={deliveryEnabled} onCheckedChange={setDeliveryEnabled} />
+  1091→                </div>
+  1092→                <Separator />
+  1093→                <div className="flex items-center justify-between">
+  1094→                  <div>
+  1095→                    <p className="text-sm font-medium text-gray-900">استلام من المتجر</p>
+  1096→                    <p className="text-xs text-gray-500">السماح بالاستلام المباشر</p>
+  1097→                  </div>
+  1098→                  <Switch checked={pickupEnabled} onCheckedChange={setPickupEnabled} />
+  1099→                </div>
+  1100→              </div>
+  1101→              <Separator />
+  1102→              <div className="space-y-2">
+  1103→                <Label className="text-sm font-medium text-gray-700">توصيل مجاني فوق (أوقية)</Label>
+  1104→                <Input value={freeDeliveryAbove} onChange={(e) => setFreeDeliveryAbove(e.target.value)} className="rounded-lg max-w-xs" />
+  1105→              </div>
+  1106→              <Button className="bg-[#0F7A4F] hover:bg-[#0D6843] text-white rounded-lg shadow-sm">
+  1107→                <Check className="h-4 w-4 ml-2" />
+  1108→                حفظ التغييرات
+  1109→              </Button>
+  1110→            </CardContent>
+  1111→          </Card>
+  1112→        </TabsContent>
+  1113→
+  1114→        <TabsContent value="return">
+  1115→          <Card className="rounded-xl border-gray-100 shadow-sm mt-4">
+  1116→            <CardContent className="p-5 space-y-4">
+  1117→              <div>
+  1118→                <p className="text-sm font-medium text-gray-700 mb-1">سياسة الإرجاع</p>
+  1119→                <p className="text-xs text-gray-500">سيتم عرض هذه السياسة لعملائك في صفحة المتجر</p>
+  1120→              </div>
+  1121→              <Textarea
+  1122→                value={returnPolicy}
+  1123→                onChange={(e) => setReturnPolicy(e.target.value)}
+  1124→                rows={6}
+  1125→                className="rounded-lg resize-none"
+  1126→              />
+  1127→              <Button className="bg-[#0F7A4F] hover:bg-[#0D6843] text-white rounded-lg shadow-sm">
+  1128→                <Check className="h-4 w-4 ml-2" />
+  1129→                حفظ التغييرات
+  1130→              </Button>
+  1131→            </CardContent>
+  1132→          </Card>
+  1133→        </TabsContent>
+  1134→
+  1135→        <TabsContent value="team">
+  1136→          <Card className="rounded-xl border-gray-100 shadow-sm mt-4">
+  1137→            <CardContent className="p-5">
+  1138→              <div className="space-y-3">
+  1139→                {teamMembers.map((member) => (
+  1140→                  <div
+  1141→                    key={member.phone}
+  1142→                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+  1143→                  >
+  1144→                    <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+  1145→                      <AvatarFallback className="bg-[#0F7A4F] text-white text-sm font-bold">{member.avatar}</AvatarFallback>
+  1146→                    </Avatar>
+  1147→                    <div className="flex-1 min-w-0">
+  1148→                      <p className="text-sm font-bold text-gray-900">{member.name}</p>
+  1149→                      <p className="text-xs text-gray-500">{member.role} • {member.phone}</p>
+  1150→                    </div>
+  1151→                    <Button variant="ghost" size="sm" className="text-[#0F7A4F] text-xs shrink-0">
+  1152→                      <Edit className="h-3.5 w-3.5 ml-1" />
+  1153→                      تعديل
+  1154→                    </Button>
+  1155→                  </div>
+  1156→                ))}
+  1157→              </div>
+  1158→              <Separator className="my-4" />
+  1159→              <Button variant="outline" className="rounded-lg">
+  1160→                <Plus className="h-4 w-4 ml-2" />
+  1161→                إضافة عضو
+  1162→              </Button>
+  1163→            </CardContent>
+  1164→          </Card>
+  1165→        </TabsContent>
+  1166→      </Tabs>
+  1167→    </div>
+  1168→  );
+  1169→}
+  1170→
+  1171→// ═══════════════════════════════════════════════════════════════════════════
+  1172→//  PAYMENTS VIEW
+  1173→// ═══════════════════════════════════════════════════════════════════════════
+  1174→function PaymentsView() {
+  1175→  const stats = [
+  1176→    { label: 'إجمالي المستلم', value: formatMRU(892000), icon: DollarSign, bg: 'bg-emerald-50', iconBg: 'bg-emerald-100 text-emerald-700', trend: '+12%' },
+  1177→    { label: 'مبالغ معلقة', value: formatMRU(45000), icon: Clock, bg: 'bg-yellow-50', iconBg: 'bg-yellow-100 text-yellow-700', trend: '' },
+  1178→    { label: 'هذا الشهر', value: formatMRU(125000), icon: TrendingUp, bg: 'bg-blue-50', iconBg: 'bg-blue-100 text-blue-700', trend: '+8%' },
+  1179→  ];
+  1180→
+  1181→  const transactions = [
+  1182→    { id: 't1', description: 'دفعة طلب ORD-007', amount: 9400, method: 'نقداً عند التسليم', date: '2026-06-30', status: 'completed' as const },
+  1183→    { id: 't2', description: 'دفعة طلب ORD-004', amount: 8000, method: 'تحويل يدوي', date: '2026-07-03', status: 'completed' as const },
+  1184→    { id: 't3', description: 'دفعة طلب ORD-003', amount: 1400, method: 'نقداً عند التسليم', date: '2026-07-03', status: 'completed' as const },
+  1185→    { id: 't4', description: 'دفعة طلب ORD-005', amount: 3800, method: 'تحويل يدوي', date: '2026-07-02', status: 'pending' as const },
+  1186→    { id: 't5', description: 'دفعة طلب ORD-006', amount: 5200, method: 'تحويل يدوي', date: '2026-07-02', status: 'completed' as const },
+  1187→    { id: 't6', description: 'دفعة طلب ORD-002', amount: 6200, method: 'تحويل يدوي', date: '2026-07-04', status: 'pending' as const },
+  1188→  ];
+  1189→
+  1190→  return (
+  1191→    <div className="space-y-5">
+  1192→      <div>
+  1193→        <h3 className="text-lg font-bold text-gray-900">المدفوعات</h3>
+  1194→        <p className="text-sm text-gray-500">تتبع جميع المدفوعات والتحويلات</p>
+  1195→      </div>
+  1196→
+  1197→      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  1198→        {stats.map((stat) => {
+  1199→          const Icon = stat.icon;
+  1200→          return (
+  1201→            <Card key={stat.label} className="rounded-xl border-gray-100 shadow-sm">
+  1202→              <CardContent className="p-4 flex items-center gap-4">
+  1203→                <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${stat.iconBg}`}>
+  1204→                  <Icon className="h-5 w-5" />
+  1205→                </div>
+  1206→                <div className="min-w-0">
+  1207→                  <p className="text-xs text-gray-500 truncate">{stat.label}</p>
+  1208→                  <p className="text-lg font-bold text-gray-900 truncate">{stat.value}</p>
+  1209→                  {stat.trend && (
+  1210→                    <p className={`text-[10px] font-medium ${stat.trend.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}`}>
+  1211→                      {stat.trend} عن الشهر الماضي
+  1212→                    </p>
+  1213→                  )}
+  1214→                </div>
+  1215→              </CardContent>
+  1216→            </Card>
+  1217→          );
+  1218→        })}
+  1219→      </div>
+  1220→
+  1221→      <Card className="rounded-xl border-gray-100 shadow-sm">
+  1222→        <CardHeader className="pb-3">
+  1223→          <CardTitle className="text-base font-bold">المعاملات الأخيرة</CardTitle>
+  1224→        </CardHeader>
+  1225→        <CardContent className="p-0">
+  1226→          <div className="overflow-x-auto">
+  1227→            <Table>
+  1228→              <TableHeader>
+  1229→                <TableRow className="hover:bg-transparent border-gray-100">
+  1230→                  <TableHead className="text-xs font-semibold text-gray-500">الوصف</TableHead>
+  1231→                  <TableHead className="text-xs font-semibold text-gray-500">المبلغ</TableHead>
+  1232→                  <TableHead className="text-xs font-semibold text-gray-500">الطريقة</TableHead>
+  1233→                  <TableHead className="text-xs font-semibold text-gray-500">الحالة</TableHead>
+  1234→                  <TableHead className="text-xs font-semibold text-gray-500">التاريخ</TableHead>
+  1235→                </TableRow>
+  1236→              </TableHeader>
+  1237→              <TableBody>
+  1238→                {transactions.map((t) => (
+  1239→                  <TableRow key={t.id} className="hover:bg-gray-50 transition-colors">
+  1240→                    <TableCell className="text-sm font-medium text-gray-900">{t.description}</TableCell>
+  1241→                    <TableCell className="text-sm font-bold text-gray-900">{formatMRU(t.amount)}</TableCell>
+  1242→                    <TableCell className="text-sm text-gray-600">{t.method}</TableCell>
+  1243→                    <TableCell>
+  1244→                      <Badge
+  1245→                        variant="secondary"
+  1246→                        className={`text-[10px] px-2 py-0.5 rounded-full ${
+  1247→                          t.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+  1248→                        }`}
+  1249→                      >
+  1250→                        {t.status === 'completed' ? 'مكتمل' : 'معلق'}
+  1251→                      </Badge>
+  1252→                    </TableCell>
+  1253→                    <TableCell className="text-sm text-gray-500">
+  1254→                      {new Date(t.date).toLocaleDateString('ar-MR')}
+  1255→                    </TableCell>
+  1256→                  </TableRow>
+  1257→                ))}
+  1258→              </TableBody>
+  1259→            </Table>
+  1260→          </div>
+  1261→        </CardContent>
+  1262→      </Card>
+  1263→    </div>
+  1264→  );
+  1265→}
+  1266→
+  1267→// ═══════════════════════════════════════════════════════════════════════════
+  1268→//  INVOICES VIEW
+  1269→// ═══════════════════════════════════════════════════════════════════════════
+  1270→function InvoicesView() {
+  1271→  const [selectedInvoice, setSelectedInvoice] = useState<typeof DEMO_INVOICES[0] | null>(null);
+  1272→  const [detailOpen, setDetailOpen] = useState(false);
+  1273→
+  1274→  const openDetail = (invoice: typeof DEMO_INVOICES[0]) => {
+  1275→    setSelectedInvoice(invoice);
+  1276→    setDetailOpen(true);
+  1277→  };
+  1278→
+  1279→  return (
+  1280→    <div className="space-y-5">
+  1281→      <div>
+  1282→        <h3 className="text-lg font-bold text-gray-900">الفواتير</h3>
+  1283→        <p className="text-sm text-gray-500">إدارة فواتير الاشتراك</p>
+  1284→      </div>
+  1285→
+  1286→      <Card className="rounded-xl border-gray-100 shadow-sm">
+  1287→        <CardContent className="p-0">
+  1288→          <div className="overflow-x-auto">
+  1289→            <Table>
+  1290→              <TableHeader>
+  1291→                <TableRow className="hover:bg-transparent border-gray-100">
+  1292→                  <TableHead className="text-xs font-semibold text-gray-500">رقم الفاتورة</TableHead>
+  1293→                  <TableHead className="text-xs font-semibold text-gray-500">المبلغ</TableHead>
+  1294→                  <TableHead className="text-xs font-semibold text-gray-500">الخطة</TableHead>
+  1295→                  <TableHead className="text-xs font-semibold text-gray-500">المدة</TableHead>
+  1296→                  <TableHead className="text-xs font-semibold text-gray-500">الحالة</TableHead>
+  1297→                  <TableHead className="text-xs font-semibold text-gray-500">التاريخ</TableHead>
+  1298→                  <TableHead className="text-xs font-semibold text-gray-500">الإجراءات</TableHead>
+  1299→                </TableRow>
+  1300→              </TableHeader>
+  1301→              <TableBody>
+  1302→                {DEMO_INVOICES.filter(i => i.storeId === 's1').map((invoice) => (
+  1303→                  <TableRow key={invoice.id} className="hover:bg-gray-50 transition-colors">
+  1304→                    <TableCell className="text-sm font-medium text-gray-900">{invoice.invoiceNumber}</TableCell>
+  1305→                    <TableCell className="text-sm font-bold text-gray-900">{formatMRU(invoice.amount)}</TableCell>
+  1306→                    <TableCell className="text-sm text-gray-700">{invoice.plan}</TableCell>
+  1307→                    <TableCell className="text-sm text-gray-600">{invoice.duration}</TableCell>
+  1308→                    <TableCell>
+  1309→                      <Badge
+  1310→                        variant="secondary"
+  1311→                        className={`text-[10px] px-2 py-0.5 rounded-full ${INVOICE_STATUS_COLORS[invoice.status]}`}
+  1312→                      >
+  1313→                        {INVOICE_STATUS_LABELS[invoice.status]}
+  1314→                      </Badge>
+  1315→                    </TableCell>
+  1316→                    <TableCell className="text-sm text-gray-500">
+  1317→                      {new Date(invoice.createdAt).toLocaleDateString('ar-MR')}
+  1318→                    </TableCell>
+  1319→                    <TableCell>
+  1320→                      <Button variant="ghost" size="sm" className="text-[#0F7A4F] text-xs" onClick={() => openDetail(invoice)}>
+  1321→                        <Eye className="h-3.5 w-3.5 ml-1" />
+  1322→                        عرض
+  1323→                      </Button>
+  1324→                    </TableCell>
+  1325→                  </TableRow>
+  1326→                ))}
+  1327→              </TableBody>
+  1328→            </Table>
+  1329→          </div>
+  1330→        </CardContent>
+  1331→      </Card>
+  1332→
+  1333→      {/* Invoice Detail Dialog */}
+  1334→      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+  1335→        <DialogContent className="rounded-xl max-w-lg">
+  1336→          {selectedInvoice && (
+  1337→            <>
+  1338→              <DialogHeader>
+  1339→                <DialogTitle className="text-center">فاتورة {selectedInvoice.invoiceNumber}</DialogTitle>
+  1340→                <DialogDescription className="text-center">تفاصيل فاتورة الاشتراك</DialogDescription>
+  1341→              </DialogHeader>
+  1342→              <div className="border-2 border-[#0F7A4F]/20 rounded-xl p-5 space-y-4">
+  1343→                {/* Header */}
+  1344→                <div className="flex items-center justify-between border-b border-dashed border-gray-300 pb-4">
+  1345→                  <div>
+  1346→                    <h4 className="text-xl font-bold text-[#0F7A4F]">دكاني</h4>
+  1347→                    <p className="text-xs text-gray-500 mt-0.5">منصة التجارة الإلكترونية</p>
+  1348→                  </div>
+  1349→                  <div className="text-left">
+  1350→                    <p className="text-xs text-gray-500">فاتورة رقم</p>
+  1351→                    <p className="text-sm font-bold text-gray-900">{selectedInvoice.invoiceNumber}</p>
+  1352→                  </div>
+  1353→                </div>
+  1354→
+  1355→                {/* Merchant Info */}
+  1356→                <div className="grid grid-cols-2 gap-4 text-sm">
+  1357→                  <div>
+  1358→                    <p className="text-xs text-gray-500">التاجر</p>
+  1359→                    <p className="font-medium text-gray-900">{selectedInvoice.merchantName}</p>
+  1360→                  </div>
+  1361→                  <div>
+  1362→                    <p className="text-xs text-gray-500">المتجر</p>
+  1363→                    <p className="font-medium text-gray-900">{selectedInvoice.storeName}</p>
+  1364→                  </div>
+  1365→                  <div>
+  1366→                    <p className="text-xs text-gray-500">الهاتف</p>
+  1367→                    <p className="font-medium text-gray-900">{selectedInvoice.phone}</p>
+  1368→                  </div>
+  1369→                  <div>
+  1370→                    <p className="text-xs text-gray-500">تاريخ الإنشاء</p>
+  1371→                    <p className="font-medium text-gray-900">
+  1372→                      {new Date(selectedInvoice.createdAt).toLocaleDateString('ar-MR')}
+  1373→                    </p>
+  1374→                  </div>
+  1375→                </div>
+  1376→
+  1377→                <Separator />
+  1378→
+  1379→                {/* Plan Details */}
+  1380→                <div className="space-y-2">
+  1381→                  <div className="flex items-center justify-between text-sm">
+  1382→                    <span className="text-gray-600">خطة الاشتراك</span>
+  1383→                    <span className="font-medium text-gray-900">{selectedInvoice.plan}</span>
+  1384→                  </div>
+  1385→                  <div className="flex items-center justify-between text-sm">
+  1386→                    <span className="text-gray-600">المدة</span>
+  1387→                    <span className="font-medium text-gray-900">{selectedInvoice.duration}</span>
+  1388→                  </div>
+  1389→                  <div className="flex items-center justify-between text-sm">
+  1390→                    <span className="text-gray-600">طريقة الدفع</span>
+  1391→                    <span className="font-medium text-gray-900">{selectedInvoice.paymentMethod}</span>
+  1392→                  </div>
+  1393→                </div>
+  1394→
+  1395→                <Separator />
+  1396→
+  1397→                {/* Total */}
+  1398→                <div className="flex items-center justify-between">
+  1399→                  <span className="text-base font-bold text-gray-900">المجموع</span>
+  1400→                  <span className="text-xl font-bold text-[#0F7A4F]">{formatMRU(selectedInvoice.amount)}</span>
+  1401→                </div>
+  1402→
+  1403→                {/* Status */}
+  1404→                <div className="text-center pt-2">
+  1405→                  <Badge
+  1406→                    variant="secondary"
+  1407→                    className={`text-xs px-3 py-1 rounded-full ${INVOICE_STATUS_COLORS[selectedInvoice.status]}`}
+  1408→                  >
+  1409→                    {INVOICE_STATUS_LABELS[selectedInvoice.status]}
+  1410→                  </Badge>
+  1411→                  {selectedInvoice.paidAt && (
+  1412→                    <p className="text-xs text-gray-500 mt-2">
+  1413→                      تاريخ الدفع: {new Date(selectedInvoice.paidAt).toLocaleDateString('ar-MR')}
+  1414→                    </p>
+  1415→                  )}
+  1416→                </div>
+  1417→              </div>
+  1418→            </>
+  1419→          )}
+  1420→        </DialogContent>
+  1421→      </Dialog>
+  1422→    </div>
+  1423→  );
+  1424→}
+  1425→
+  1426→// ═══════════════════════════════════════════════════════════════════════════
+  1427→//  PLACEHOLDER VIEW (for views not yet fully implemented)
+  1428→// ═══════════════════════════════════════════════════════════════════════════
+  1429→function PlaceholderView({ title, description }: { title: string; description: string }) {
+  1430→  return (
+  1431→    <div className="flex flex-col items-center justify-center py-20 text-center">
+  1432→      <div className="h-16 w-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+  1433→        <AlertCircle className="h-8 w-8 text-gray-400" />
+  1434→      </div>
+  1435→      <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+  1436→      <p className="text-sm text-gray-500 mt-1 max-w-md">{description}</p>
+  1437→    </div>
+  1438→  );
+  1439→}
+  1440→
+  1441→// ═══════════════════════════════════════════════════════════════════════════
+  1442→//  MAIN MERCHANT DASHBOARD COMPONENT
+  1443→// ═══════════════════════════════════════════════════════════════════════════
+  1444→export default function MerchantDashboard() {
+  1445→  const { currentView } = useApp();
+  1446→  const isMobile = useIsMobile();
+  1447→
+  1448→  const renderView = () => {
+  1449→    switch (currentView) {
+  1450→      case 'merchant-dashboard':
+  1451→        return <DashboardOverview />;
+  1452→      case 'products':
+  1453→        return <ProductsView />;
+  1454→      case 'product-form':
+  1455→        return <ProductFormView />;
+  1456→      case 'categories':
+  1457→        return <CategoriesView />;
+  1458→      case 'reports':
+  1459→        return <ReportsView />;
+  1460→      case 'settings':
+  1461→        return <SettingsView />;
+  1462→      case 'payments':
+  1463→        return <PaymentsView />;
+  1464→      case 'invoices':
+  1465→        return <InvoicesView />;
+  1466→      case 'orders':
+  1467→      case 'order-details':
+  1468→        return <OrdersModule />;
+  1469→      case 'customers':
+  1470→        return <CustomersModule />;
+  1471→      case 'campaigns':
+  1472→      case 'campaign-form':
+  1473→        return <CampaignsModule />;
+  1474→      case 'coupons':
+  1475→      case 'coupon-form':
+  1476→        return <CouponsModule />;
+  1477→      case 'delivery':
+  1478→      case 'delivery-agents':
+  1479→        return <DeliveryModule />;
+  1480→      case 'automation':
+  1481→        return <AutomationModule />;
+  1482→      default:
+  1483→        return <DashboardOverview />;
+  1484→    }
+  1485→  };
+  1486→
+  1487→  return (
+  1488→    <div className="min-h-screen bg-[#FAFAF7]">
+  1489→      {/* Sidebar */}
+  1490→      <Sidebar />
+  1491→
+  1492→      {/* Main Content */}
+  1493→      <div className={`transition-all duration-300 ${isMobile ? 'mr-0' : 'mr-[260px]'}`}>
+  1494→        <TopBar />
+  1495→        <main className="p-4 md:p-6">
+  1496→          {renderView()}
+  1497→        </main>
+  1498→      </div>
+  1499→    </div>
+  1500→  );
+  1501→}

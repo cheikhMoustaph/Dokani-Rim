@@ -84,6 +84,7 @@ import {
   Filter,
   Menu,
   X,
+  Wallet,
 } from 'lucide-react';
 
 // ============ INVOICE STATUS LABELS & COLORS ============
@@ -112,6 +113,7 @@ const SIDEBAR_ITEMS = [
   { id: 'stores', label: 'المتاجر', icon: Store },
   { id: 'subscriptions', label: 'الاشتراكات', icon: CreditCard },
   { id: 'payments', label: 'المدفوعات', icon: DollarSign },
+  { id: 'payment-methods', label: 'طرق الدفع', icon: Wallet },
   { id: 'invoices', label: 'الفواتير', icon: TrendingUp },
   { id: 'orders', label: 'الطلبات', icon: ShoppingBag },
   { id: 'products', label: 'المنتجات', icon: Package },
@@ -201,6 +203,7 @@ export default function AdminDashboard() {
     else if (id === 'stores') setActiveTab('stores');
     else if (id === 'payments') setActiveTab('payments');
     else if (id === 'invoices') setActiveTab('payments');
+    else if (id === 'payment-methods') setActiveTab('payment-methods');
     setSidebarOpen(false);
   };
 
@@ -371,6 +374,7 @@ export default function AdminDashboard() {
                 overview: 'overview',
                 stores: 'stores',
                 payments: 'payments',
+                'payment-methods': 'payment-methods',
               };
               setActiveSidebarItem(tabToSidebar[val] || val);
             }}
@@ -1054,6 +1058,76 @@ export default function AdminDashboard() {
                         ))}
                       </TableBody>
                     </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ============ PAYMENT METHODS TAB ============ */}
+            <TabsContent value="payment-methods" className="mt-0 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">طرق الدفع</h2>
+                  <p className="text-sm text-gray-500 mt-1">إدارة طرق الدفع المتاحة على المنصة</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {[
+                  { name: 'Bankily', type: 'bankily', color: 'bg-orange-500', merchants: 89, transactions: 1250 },
+                  { name: 'Sedad', type: 'sedad', color: 'bg-blue-500', merchants: 67, transactions: 890 },
+                  { name: 'Masrvi', type: 'masrvi', color: 'bg-green-500', merchants: 72, transactions: 1050 },
+                  { name: 'BIM Bank', type: 'bim_bank', color: 'bg-purple-500', merchants: 45, transactions: 520 },
+                  { name: 'Click', type: 'click', color: 'bg-cyan-500', merchants: 38, transactions: 310 },
+                  { name: 'الدفع عند الاستلام', type: 'cash', color: 'bg-gray-500', merchants: 156, transactions: 4523 },
+                ].map((method) => (
+                  <Card key={method.type} className="rounded-xl border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className={`w-12 h-12 rounded-xl ${method.color} flex items-center justify-center text-white font-bold text-lg`}>
+                          {method.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{method.name}</p>
+                          <Badge variant="outline" className="text-[10px] mt-0.5">نشط</Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">التجار المستخدمين</span>
+                          <span className="font-semibold text-gray-900">{method.merchants}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">المعاملات</span>
+                          <span className="font-semibold text-gray-900">{method.transactions.toLocaleString('ar-EG')}</span>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full mt-4 text-xs border-gray-200">
+                        إعدادات الطريقة
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <Card className="rounded-xl border-gray-100 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base font-bold">إحصائيات المدفوعات</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-700">24.650.000</p>
+                      <p className="text-xs text-green-600 mt-1">إجمالي المعاملات (أوقية)</p>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-700">8.530</p>
+                      <p className="text-xs text-blue-600 mt-1">إجمالي المعاملات الرقمية</p>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-700">62%</p>
+                      <p className="text-xs text-gray-600 mt-1">نسبة الدفع الرقمي</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

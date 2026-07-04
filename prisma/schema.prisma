@@ -63,6 +63,14 @@ model Store {
   returnPolicy  String?
   paymentMethods String @default("cash,manual_transfer")
 
+  // Store builder
+  pages             StorePage[]
+  socialLinks       StoreSocialLink[]
+  themeSettings     StoreThemeSetting[]
+  storePaymentMethods PaymentMethod[]
+  paymentReceipts   PaymentReceipt[]
+  accountingTransactions AccountingTransaction[]
+
   // Default branch auto-created
 }
 
@@ -360,4 +368,120 @@ model MessageLog {
   createdAt       DateTime @default(now())
 
   sentBy          PlatformUser @relation(fields: [sentById], references: [id])
+}
+
+// ============ STORE PAGES ============
+
+model StorePage {
+  id            String   @id @default(cuid())
+  storeId       String
+  title         String
+  slug          String
+  content       String   @default("")
+  status        String   @default("draft") // published, draft
+  showInFooter  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+// ============ STORE SOCIAL LINKS ============
+
+model StoreSocialLink {
+  id            String   @id @default(cuid())
+  storeId       String
+  platform      String   // facebook, instagram, tiktok, snapchat, whatsapp, youtube, website, telegram
+  url           String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+// ============ STORE THEME SETTINGS ============
+
+model StoreThemeSetting {
+  id              String   @id @default(cuid())
+  storeId         String
+  primaryColor    String   @default("#0F7A4F")
+  secondaryColor  String   @default("#D6A84F")
+  heroTitle       String   @default("مرحباً بكم في متجرنا")
+  heroSubtitle    String   @default("تصفحي أحدث المنتجات")
+  heroImageUrl    String?
+  layoutStyle     String   @default("modern") // modern, classic, minimal
+  sectionsConfig  String   @default("{}") // JSON config for homepage sections
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+// ============ PAYMENT METHODS ============
+
+model PaymentMethod {
+  id            String   @id @default(cuid())
+  storeId       String
+  name          String
+  type          String   @default("manual") // bankily, sedad, masrvi, bim_bank, click, cash, other
+  logoUrl       String?
+  accountName   String?
+  accountNumber String?
+  instructions  String?
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  receipts      PaymentReceipt[]
+  transactions  AccountingTransaction[]
+}
+
+// ============ PAYMENT RECEIPTS ============
+
+model PaymentReceipt {
+  id              String   @id @default(cuid())
+  storeId         String
+  orderId         String?
+  customerId      String?
+  paymentMethodId String
+  receiptUrl      String?
+  referenceNumber String?
+  amount          Float
+  status          String   @default("waiting_confirmation") // unpaid, waiting_confirmation, paid, rejected, refunded
+  customerNote    String?
+  merchantNote    String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+}
+
+// ============ ACCOUNTING TRANSACTIONS ============
+
+model AccountingTransaction {
+  id              String   @id @default(cuid())
+  storeId         String
+  orderId         String?
+  customerId      String?
+  paymentMethodId String?
+  type            String   @default("sale_income") // sale_income, manual_payment, cash_on_delivery, refund, adjustment
+  amount          Float
+  status          String   @default("paid") // paid, pending, rejected, refunded
+  referenceNumber String?
+  receiptUrl      String?
+  notes           String?
+  confirmedBy     String?
+  confirmedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
 }

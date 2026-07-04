@@ -1,0 +1,895 @@
+     1→'use client';
+     2→
+     3→import { useState, type FormEvent, useCallback } from 'react';
+     4→import { useApp } from '@/lib/store';
+     5→import { Button } from '@/components/ui/button';
+     6→import {
+     7→  Card,
+     8→  CardContent,
+     9→  CardHeader,
+    10→} from '@/components/ui/card';
+    11→import { Input } from '@/components/ui/input';
+    12→import { Label } from '@/components/ui/label';
+    13→import {
+    14→  Select,
+    15→  SelectContent,
+    16→  SelectItem,
+    17→  SelectTrigger,
+    18→  SelectValue,
+    19→} from '@/components/ui/select';
+    20→import {
+    21→  ArrowRight,
+    22→  ArrowLeft,
+    23→  User,
+    24→  Phone,
+    25→  Mail,
+    26→  Store,
+    27→  MapPin,
+    28→  Upload,
+    29→  ImagePlus,
+    30→  ChevronDown,
+    31→  ChevronUp,
+    32→  Copy,
+    33→  Check,
+    34→  MessageCircle,
+    35→  ShoppingBag,
+    36→  Sparkles,
+    37→  PartyPopper,
+    38→  Globe,
+    39→  Tag,
+    40→  Camera,
+    41→} from 'lucide-react';
+    42→
+    43→/* ═══════════════════════════════════════════
+    44→   Step Labels & Constants
+    45→   ═══════════════════════════════════════════ */
+    46→
+    47→const STEP_LABELS = ['إنشاء الحساب', 'معلومات المتجر', 'إضافة المنتجات', 'متجرك جاهز!'];
+    48→
+    49→const STORE_TYPES = [
+    50→  'أزياء وإكسسوارات',
+    51→  'عطور',
+    52→  'إلكترونيات',
+    53→  'حلويات ومأكولات',
+    54→  'أخرى',
+    55→];
+    56→
+    57→const CITIES = [
+    58→  'نواكشوط',
+    59→  'نواذيبو',
+    60→  'التجمعات',
+    61→  'روصو',
+    62→  'كيفه',
+    63→  'أخرى',
+    64→];
+    65→
+    66→const LANGUAGES = ['العربية', 'الفرنسية'];
+    67→
+    68→const PRODUCT_CATEGORIES = [
+    69→  'أزياء وإكسسوارات',
+    70→  'عطور',
+    71→  'إلكترونيات',
+    72→  'حلويات ومأكولات',
+    73→  'أخرى',
+    74→];
+    75→
+    76→const DEFAULT_PRODUCTS = [
+    77→  { name: 'عباية كتان فاخرة', price: '3,500', category: 'أزياء وإكسسوارات', image: null as string | null },
+    78→  { name: 'حقيبة يد جلدية', price: '5,000', category: 'أزياء وإكسسوارات', image: null as string | null },
+    79→  { name: 'عطر فاخر', price: '6,000', category: 'عطور', image: null as string | null },
+    80→];
+    81→
+    82→/* ═══════════════════════════════════════════
+    83→   Progress Bar
+    84→   ═══════════════════════════════════════════ */
+    85→
+    86→function ProgressBar({ step }: { step: number }) {
+    87→  return (
+    88→    <div className="w-full mb-8">
+    89→      {/* Step indicators */}
+    90→      <div className="flex items-center justify-between mb-3">
+    91→        {STEP_LABELS.map((label, i) => {
+    92→          const stepNum = i + 1;
+    93→          const isActive = stepNum === step;
+    94→          const isDone = stepNum < step;
+    95→          return (
+    96→            <div key={i} className="flex items-center flex-1 last:flex-none">
+    97→              <div className="flex flex-col items-center gap-1.5">
+    98→                <div
+    99→                  className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${
+   100→                    isDone
+   101→                      ? 'bg-[#0F7A4F] text-white shadow-md shadow-[#0F7A4F]/20'
+   102→                      : isActive
+   103→                        ? 'bg-[#0F7A4F] text-white shadow-lg shadow-[#0F7A4F]/30 ring-4 ring-[#0F7A4F]/10'
+   104→                        : 'bg-gray-100 text-gray-400'
+   105→                  }`}
+   106→                >
+   107→                  {isDone ? <Check className="h-4 w-4" /> : stepNum}
+   108→                </div>
+   109→                <span
+   110→                  className={`text-[10px] sm:text-xs font-medium hidden sm:block ${
+   111→                    isActive ? 'text-[#0F7A4F]' : isDone ? 'text-gray-500' : 'text-gray-400'
+   112→                  }`}
+   113→                >
+   114→                  {label}
+   115→                </span>
+   116→              </div>
+   117→              {i < STEP_LABELS.length - 1 && (
+   118→                <div className="flex-1 mx-2 sm:mx-3">
+   119→                  <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+   120→                    <div
+   121→                      className="h-full bg-[#0F7A4F] rounded-full transition-all duration-700 ease-out"
+   122→                      style={{ width: isDone ? '100%' : '0%' }}
+   123→                    />
+   124→                  </div>
+   125→                </div>
+   126→              )}
+   127→            </div>
+   128→          );
+   129→        })}
+   130→      </div>
+   131→    </div>
+   132→  );
+   133→}
+   134→
+   135→/* ═══════════════════════════════════════════
+   136→   Step 1: Account Info (Pre-filled)
+   137→   ═══════════════════════════════════════════ */
+   138→
+   139→function Step1Account({ onNext }: { onNext: () => void }) {
+   140→  const [name] = useState('فاطمة بنت أحمد');
+   141→  const [phone] = useState('22222333');
+   142→  const [email] = useState('fatima@dokani.mr');
+   143→
+   144→  const fields = [
+   145→    { icon: User, label: 'الاسم الكامل', value: name },
+   146→    { icon: Phone, label: 'رقم الهاتف / واتساب', value: phone },
+   147→    { icon: Mail, label: 'البريد الإلكتروني', value: email, dir: 'ltr' as const },
+   148→  ];
+   149→
+   150→  return (
+   151→    <div className="animate-[fade-in_0.4s_ease-out]">
+   152→      <div className="text-center mb-6">
+   153→        <h2 className="text-xl font-bold text-gray-900">إنشاء الحساب</h2>
+   154→        <p className="text-sm text-gray-500 mt-1">تأكد من صحة بياناتك</p>
+   155→      </div>
+   156→
+   157→      <Card className="rounded-2xl border-0 shadow-sm bg-gradient-to-br from-white to-gray-50/50">
+   158→        <CardContent className="p-6 space-y-4">
+   159→          {fields.map((f, i) => (
+   160→            <div
+   161→              key={i}
+   162→              className="flex items-center gap-3 p-3.5 rounded-xl bg-white border border-gray-100 shadow-sm"
+   163→            >
+   164→              <div className="w-10 h-10 rounded-xl bg-[#0F7A4F]/5 flex items-center justify-center shrink-0">
+   165→                <f.icon className="h-4.5 w-4.5 text-[#0F7A4F]" />
+   166→              </div>
+   167→              <div className="min-w-0">
+   168→                <p className="text-xs text-gray-400 mb-0.5">{f.label}</p>
+   169→                <p
+   170→                  className="text-sm font-semibold text-gray-800 truncate"
+   171→                  dir={f.dir || 'rtl'}
+   172→                >
+   173→                  {f.value}
+   174→                </p>
+   175→              </div>
+   176→              <Check className="h-4 w-4 text-[#0F7A4F] shrink-0 mr-auto" />
+   177→            </div>
+   178→          ))}
+   179→        </CardContent>
+   180→      </Card>
+   181→
+   182→      <Button
+   183→        onClick={onNext}
+   184→        className="w-full h-12 mt-6 rounded-xl bg-[#0F7A4F] hover:bg-[#0a5e3c] text-white font-semibold text-sm shadow-lg shadow-[#0F7A4F]/20 transition-all hover:shadow-xl hover:shadow-[#0F7A4F]/30 active:scale-[0.98]"
+   185→      >
+   186→        التالي
+   187→        <ArrowLeft className="h-4 w-4 mr-2" />
+   188→      </Button>
+   189→    </div>
+   190→  );
+   191→}
+   192→
+   193→/* ═══════════════════════════════════════════
+   194→   Step 2: Store Info
+   195→   ═══════════════════════════════════════════ */
+   196→
+   197→function Step2StoreInfo({
+   198→  onNext,
+   199→  onBack,
+   200→}: {
+   201→  onNext: () => void;
+   202→  onBack: () => void;
+   203→}) {
+   204→  const [storeName, setStoreName] = useState('');
+   205→  const [storeType, setStoreType] = useState('');
+   206→  const [city, setCity] = useState('');
+   207→  const [whatsapp, setWhatsapp] = useState('');
+   208→  const [language, setLanguage] = useState('');
+   209→  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+   210→  const [errors, setErrors] = useState<Record<string, string | null>>({});
+   211→  const [touched, setTouched] = useState<Record<string, boolean>>({});
+   212→
+   213→  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   214→    const file = e.target.files?.[0];
+   215→    if (file) {
+   216→      const reader = new FileReader();
+   217→      reader.onloadend = () => {
+   218→        setLogoPreview(reader.result as string);
+   219→      };
+   220→      reader.readAsDataURL(file);
+   221→    }
+   222→  };
+   223→
+   224→  const validate = useCallback(() => {
+   225→    const newErrors: Record<string, string | null> = {};
+   226→    if (!storeName.trim()) newErrors.storeName = 'اسم المتجر مطلوب';
+   227→    if (!storeType) newErrors.storeType = 'يرجى اختيار نوع المتجر';
+   228→    if (!city) newErrors.city = 'يرجى اختيار المدينة';
+   229→    setErrors(newErrors);
+   230→    return Object.values(newErrors).every((v) => v === null);
+   231→  }, [storeName, storeType, city]);
+   232→
+   233→  const handleNext = () => {
+   234→    setTouched({ storeName: true, storeType: true, city: true });
+   235→    if (validate()) onNext();
+   236→  };
+   237→
+   238→  const inputClass =
+   239→    'w-full h-12 rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white transition-colors text-sm';
+   240→
+   241→  return (
+   242→    <div className="animate-[fade-in_0.4s_ease-out]">
+   243→      <div className="text-center mb-6">
+   244→        <h2 className="text-xl font-bold text-gray-900">معلومات المتجر</h2>
+   245→        <p className="text-sm text-gray-500 mt-1">أخبرنا عن متجرك لنبنيه لك</p>
+   246→      </div>
+   247→
+   248→      <Card className="rounded-2xl border-0 shadow-sm bg-gradient-to-br from-white to-gray-50/50">
+   249→        <CardContent className="p-6 space-y-5">
+   250→          {/* Store Name */}
+   251→          <div className="space-y-2">
+   252→            <Label className="text-sm font-medium text-gray-700">
+   253→              اسم المتجر <span className="text-red-400">*</span>
+   254→            </Label>
+   255→            <div className="relative">
+   256→              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+   257→                <Store className="h-4 w-4" />
+   258→              </span>
+   259→              <Input
+   260→                placeholder="مثال: بوتيك النخبة"
+   261→                value={storeName}
+   262→                onChange={(e) => {
+   263→                  setStoreName(e.target.value);
+   264→                  if (touched.storeName)
+   265→                    setErrors((prev) => ({
+   266→                      ...prev,
+   267→                      storeName: e.target.value.trim() ? null : 'اسم المتجر مطلوب',
+   268→                    }));
+   269→                }}
+   270→                onBlur={() => setTouched((prev) => ({ ...prev, storeName: true }))}
+   271→                className={`${inputClass} pr-10 ${
+   272→                  touched.storeName && errors.storeName
+   273→                    ? 'border-red-400 focus-visible:ring-red-400/20'
+   274→                    : 'focus-visible:ring-[#0F7A4F]/20'
+   275→                }`}
+   276→              />
+   277→            </div>
+   278→            {touched.storeName && errors.storeName && (
+   279→              <p className="text-sm text-red-500 flex items-center gap-1">
+   280→                <span className="inline-block w-1 h-1 rounded-full bg-red-500" />
+   281→                {errors.storeName}
+   282→              </p>
+   283→            )}
+   284→          </div>
+   285→
+   286→          {/* Store Type */}
+   287→          <div className="space-y-2">
+   288→            <Label className="text-sm font-medium text-gray-700">
+   289→              نوع المتجر <span className="text-red-400">*</span>
+   290→            </Label>
+   291→            <Select
+   292→              value={storeType}
+   293→              onValueChange={(v) => {
+   294→                setStoreType(v);
+   295→                if (touched.storeType) setErrors((prev) => ({ ...prev, storeType: null }));
+   296→              }}
+   297→              onOpenChange={() => setTouched((prev) => ({ ...prev, storeType: true }))}
+   298→            >
+   299→              <SelectTrigger
+   300→                className={`h-12 rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white transition-colors text-sm ${
+   301→                  touched.storeType && errors.storeType
+   302→                    ? 'border-red-400'
+   303→                    : 'focus:ring-[#0F7A4F]/20'
+   304→                }`}
+   305→              >
+   306→                <Tag className="h-4 w-4 ml-2 text-gray-400" />
+   307→                <SelectValue placeholder="اختر نوع المتجر" />
+   308→              </SelectTrigger>
+   309→              <SelectContent className="rounded-xl border-gray-200">
+   310→                {STORE_TYPES.map((type) => (
+   311→                  <SelectItem key={type} value={type} className="rounded-lg">
+   312→                    {type}
+   313→                  </SelectItem>
+   314→                ))}
+   315→              </SelectContent>
+   316→            </Select>
+   317→            {touched.storeType && errors.storeType && (
+   318→              <p className="text-sm text-red-500 flex items-center gap-1">
+   319→                <span className="inline-block w-1 h-1 rounded-full bg-red-500" />
+   320→                {errors.storeType}
+   321→              </p>
+   322→            )}
+   323→          </div>
+   324→
+   325→          {/* City */}
+   326→          <div className="space-y-2">
+   327→            <Label className="text-sm font-medium text-gray-700">
+   328→              المدينة <span className="text-red-400">*</span>
+   329→            </Label>
+   330→            <Select
+   331→              value={city}
+   332→              onValueChange={(v) => {
+   333→                setCity(v);
+   334→                if (touched.city) setErrors((prev) => ({ ...prev, city: null }));
+   335→              }}
+   336→              onOpenChange={() => setTouched((prev) => ({ ...prev, city: true }))}
+   337→            >
+   338→              <SelectTrigger
+   339→                className={`h-12 rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white transition-colors text-sm ${
+   340→                  touched.city && errors.city
+   341→                    ? 'border-red-400'
+   342→                    : 'focus:ring-[#0F7A4F]/20'
+   343→                }`}
+   344→              >
+   345→                <MapPin className="h-4 w-4 ml-2 text-gray-400" />
+   346→                <SelectValue placeholder="اختر المدينة" />
+   347→              </SelectTrigger>
+   348→              <SelectContent className="rounded-xl border-gray-200">
+   349→                {CITIES.map((c) => (
+   350→                  <SelectItem key={c} value={c} className="rounded-lg">
+   351→                    {c}
+   352→                  </SelectItem>
+   353→                ))}
+   354→              </SelectContent>
+   355→            </Select>
+   356→            {touched.city && errors.city && (
+   357→              <p className="text-sm text-red-500 flex items-center gap-1">
+   358→                <span className="inline-block w-1 h-1 rounded-full bg-red-500" />
+   359→                {errors.city}
+   360→              </p>
+   361→            )}
+   362→          </div>
+   363→
+   364→          {/* WhatsApp Number */}
+   365→          <div className="space-y-2">
+   366→            <Label className="text-sm font-medium text-gray-700">رقم واتساب المتجر</Label>
+   367→            <div className="relative">
+   368→              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+   369→                <Phone className="h-4 w-4" />
+   370→              </span>
+   371→              <Input
+   372→                type="tel"
+   373→                placeholder="22XX XXXX"
+   374→                value={whatsapp}
+   375→                onChange={(e) => setWhatsapp(e.target.value)}
+   376→                className={`${inputClass} pr-10 focus-visible:ring-[#0F7A4F]/20`}
+   377→              />
+   378→            </div>
+   379→          </div>
+   380→
+   381→          {/* Logo Upload */}
+   382→          <div className="space-y-2">
+   383→            <Label className="text-sm font-medium text-gray-700">رفع شعار المتجر</Label>
+   384→            <label
+   385→              htmlFor="logo-upload"
+   386→              className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50 hover:bg-gray-50 hover:border-[#0F7A4F]/30 cursor-pointer transition-all group"
+   387→            >
+   388→              {logoPreview ? (
+   389→                <div className="relative w-full h-full rounded-xl overflow-hidden">
+   390→                  <img
+   391→                    src={logoPreview}
+   392→                    alt="شعار المتجر"
+   393→                    className="w-full h-full object-cover"
+   394→                  />
+   395→                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+   396→                    <Camera className="h-6 w-6 text-white" />
+   397→                  </div>
+   398→                </div>
+   399→              ) : (
+   400→                <>
+   401→                  <div className="w-12 h-12 rounded-xl bg-[#0F7A4F]/5 flex items-center justify-center mb-2 group-hover:bg-[#0F7A4F]/10 transition-colors">
+   402→                    <Upload className="h-5 w-5 text-[#0F7A4F]" />
+   403→                  </div>
+   404→                  <p className="text-sm text-gray-500 font-medium">
+   405→                    اسحب الصورة هنا أو انقر للاختيار
+   406→                  </p>
+   407→                  <p className="text-xs text-gray-400 mt-1">PNG, JPG حتى 2MB</p>
+   408→                </>
+   409→              )}
+   410→              <input
+   411→                id="logo-upload"
+   412→                type="file"
+   413→                accept="image/png,image/jpeg,image/webp"
+   414→                onChange={handleFileChange}
+   415→                className="hidden"
+   416→              />
+   417→            </label>
+   418→          </div>
+   419→
+   420→          {/* Language */}
+   421→          <div className="space-y-2">
+   422→            <Label className="text-sm font-medium text-gray-700">اللغة الرئيسية</Label>
+   423→            <Select value={language} onValueChange={setLanguage}>
+   424→              <SelectTrigger className="h-12 rounded-xl border-gray-200 bg-gray-50/50 focus:bg-white transition-colors text-sm focus:ring-[#0F7A4F]/20">
+   425→                <Globe className="h-4 w-4 ml-2 text-gray-400" />
+   426→                <SelectValue placeholder="اختر اللغة" />
+   427→              </SelectTrigger>
+   428→              <SelectContent className="rounded-xl border-gray-200">
+   429→                {LANGUAGES.map((l) => (
+   430→                  <SelectItem key={l} value={l} className="rounded-lg">
+   431→                    {l}
+   432→                  </SelectItem>
+   433→                ))}
+   434→              </SelectContent>
+   435→            </Select>
+   436→          </div>
+   437→        </CardContent>
+   438→      </Card>
+   439→
+   440→      <div className="flex gap-3 mt-6">
+   441→        <Button
+   442→          variant="outline"
+   443→          onClick={onBack}
+   444→          className="h-12 px-5 rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+   445→        >
+   446→          <ArrowRight className="h-4 w-4 ml-2" />
+   447→          السابق
+   448→        </Button>
+   449→        <Button
+   450→          onClick={handleNext}
+   451→          className="flex-1 h-12 rounded-xl bg-[#0F7A4F] hover:bg-[#0a5e3c] text-white font-semibold text-sm shadow-lg shadow-[#0F7A4F]/20 transition-all hover:shadow-xl hover:shadow-[#0F7A4F]/30 active:scale-[0.98]"
+   452→        >
+   453→          التالي
+   454→          <ArrowLeft className="h-4 w-4 mr-2" />
+   455→        </Button>
+   456→      </div>
+   457→    </div>
+   458→  );
+   459→}
+   460→
+   461→/* ═══════════════════════════════════════════
+   462→   Step 3: Add Products
+   463→   ═══════════════════════════════════════════ */
+   464→
+   465→function ProductCard({
+   466→  product,
+   467→  index,
+   468→  onChange,
+   469→}: {
+   470→  product: { name: string; price: string; category: string; image: string | null };
+   471→  index: number;
+   472→  onChange: (index: number, field: string, value: string) => void;
+   473→}) {
+   474→  const [expanded, setExpanded] = useState(index === 0);
+   475→
+   476→  return (
+   477→    <Card
+   478→      className="rounded-2xl border-0 shadow-sm bg-white overflow-hidden transition-all duration-300 hover:shadow-md"
+   479→    >
+   480→      <button
+   481→        type="button"
+   482→        onClick={() => setExpanded(!expanded)}
+   483→        className="w-full flex items-center gap-3 p-4 text-right hover:bg-gray-50/50 transition-colors"
+   484→      >
+   485→        {/* Product Image Placeholder */}
+   486→        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0F7A4F]/5 to-[#D6A84F]/5 flex items-center justify-center shrink-0 border border-gray-100">
+   487→          {product.image ? (
+   488→            <img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-xl" />
+   489→          ) : (
+   490→            <ImagePlus className="h-5 w-5 text-[#0F7A4F]/40" />
+   491→          )}
+   492→        </div>
+   493→        <div className="flex-1 min-w-0">
+   494→          <p className="text-sm font-bold text-gray-800 truncate">{product.name}</p>
+   495→          <p className="text-xs text-gray-400 mt-0.5">
+   496→            {product.category} • {product.price} أوقية
+   497→          </p>
+   498→        </div>
+   499→        <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+   500→          {expanded ? (
+   501→            <ChevronUp className="h-4 w-4 text-gray-400" />
+   502→          ) : (
+   503→            <ChevronDown className="h-4 w-4 text-gray-400" />
+   504→          )}
+   505→        </div>
+   506→      </button>
+   507→
+   508→      {expanded && (
+   509→        <div className="px-4 pb-4 pt-0 border-t border-gray-50">
+   510→          <div className="pt-4 space-y-3">
+   511→            {/* Product Name */}
+   512→            <div className="space-y-1.5">
+   513→              <Label className="text-xs font-medium text-gray-500">اسم المنتج</Label>
+   514→              <Input
+   515→                value={product.name}
+   516→                onChange={(e) => onChange(index, 'name', e.target.value)}
+   517→                className="h-10 rounded-lg border-gray-200 bg-gray-50/50 text-sm focus-visible:ring-[#0F7A4F]/20"
+   518→              />
+   519→            </div>
+   520→
+   521→            {/* Price & Category Row */}
+   522→            <div className="grid grid-cols-2 gap-3">
+   523→              <div className="space-y-1.5">
+   524→                <Label className="text-xs font-medium text-gray-500">السعر (أوقية)</Label>
+   525→                <Input
+   526→                  value={product.price}
+   527→                  onChange={(e) => onChange(index, 'price', e.target.value)}
+   528→                  className="h-10 rounded-lg border-gray-200 bg-gray-50/50 text-sm focus-visible:ring-[#0F7A4F]/20"
+   529→                  dir="ltr"
+   530→                />
+   531→              </div>
+   532→              <div className="space-y-1.5">
+   533→                <Label className="text-xs font-medium text-gray-500">التصنيف</Label>
+   534→                <Select
+   535→                  value={product.category}
+   536→                  onValueChange={(v) => onChange(index, 'category', v)}
+   537→                >
+   538→                  <SelectTrigger className="h-10 rounded-lg border-gray-200 bg-gray-50/50 text-sm focus:ring-[#0F7A4F]/20">
+   539→                    <SelectValue />
+   540→                  </SelectTrigger>
+   541→                  <SelectContent className="rounded-xl border-gray-200">
+   542→                    {PRODUCT_CATEGORIES.map((cat) => (
+   543→                      <SelectItem key={cat} value={cat} className="rounded-lg">
+   544→                        {cat}
+   545→                      </SelectItem>
+   546→                    ))}
+   547→                  </SelectContent>
+   548→                </Select>
+   549→              </div>
+   550→            </div>
+   551→
+   552→            {/* Image Upload */}
+   553→            <label
+   554→              htmlFor={`product-img-${index}`}
+   555→              className="flex items-center justify-center h-20 border border-dashed border-gray-200 rounded-lg bg-gray-50/50 hover:bg-gray-50 hover:border-[#0F7A4F]/30 cursor-pointer transition-all group"
+   556→            >
+   557→              {product.image ? (
+   558→                <div className="relative w-full h-full">
+   559→                  <img
+   560→                    src={product.image}
+   561→                    alt={product.name}
+   562→                    className="w-full h-full object-cover rounded-lg"
+   563→                  />
+   564→                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+   565→                    <Camera className="h-5 w-5 text-white" />
+   566→                  </div>
+   567→                </div>
+   568→              ) : (
+   569→                <div className="flex items-center gap-2 text-gray-400">
+   570→                  <Upload className="h-4 w-4" />
+   571→                  <span className="text-xs">إضافة صورة</span>
+   572→                </div>
+   573→              )}
+   574→              <input
+   575→                id={`product-img-${index}`}
+   576→                type="file"
+   577→                accept="image/*"
+   578→                className="hidden"
+   579→                onChange={(e) => {
+   580→                  const file = e.target.files?.[0];
+   581→                  if (file) {
+   582→                    const reader = new FileReader();
+   583→                    reader.onloadend = () => {
+   584→                      onChange(index, 'image', reader.result as string);
+   585→                    };
+   586→                    reader.readAsDataURL(file);
+   587→                  }
+   588→                }}
+   589→              />
+   590→            </label>
+   591→          </div>
+   592→        </div>
+   593→      )}
+   594→    </Card>
+   595→  );
+   596→}
+   597→
+   598→function Step3Products({
+   599→  onNext,
+   600→  onBack,
+   601→}: {
+   602→  onNext: () => void;
+   603→  onBack: () => void;
+   604→}) {
+   605→  const [products, setProducts] = useState(DEFAULT_PRODUCTS);
+   606→
+   607→  const handleProductChange = (index: number, field: string, value: string) => {
+   608→    setProducts((prev) => {
+   609→      const updated = [...prev];
+   610→      updated[index] = { ...updated[index], [field]: value };
+   611→      return updated;
+   612→    });
+   613→  };
+   614→
+   615→  return (
+   616→    <div className="animate-[fade-in_0.4s_ease-out]">
+   617→      <div className="text-center mb-6">
+   618→        <h2 className="text-xl font-bold text-gray-900">إضافة أول المنتجات</h2>
+   619→        <p className="text-sm text-gray-500 mt-1">أضف على الأقل 3 منتجات لبدء البيع</p>
+   620→      </div>
+   621→
+   622→      <div className="space-y-3">
+   623→        {products.map((product, i) => (
+   624→          <ProductCard
+   625→            key={i}
+   626→            product={product}
+   627→            index={i}
+   628→            onChange={handleProductChange}
+   629→          />
+   630→        ))}
+   631→      </div>
+   632→
+   633→      <div className="flex gap-3 mt-6">
+   634→        <Button
+   635→          variant="outline"
+   636→          onClick={onBack}
+   637→          className="h-12 px-5 rounded-xl border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+   638→        >
+   639→          <ArrowRight className="h-4 w-4 ml-2" />
+   640→          السابق
+   641→        </Button>
+   642→        <Button
+   643→          onClick={onNext}
+   644→          className="flex-1 h-12 rounded-xl bg-[#0F7A4F] hover:bg-[#0a5e3c] text-white font-semibold text-sm shadow-lg shadow-[#0F7A4F]/20 transition-all hover:shadow-xl hover:shadow-[#0F7A4F]/30 active:scale-[0.98]"
+   645→        >
+   646→          التالي
+   647→          <ArrowLeft className="h-4 w-4 mr-2" />
+   648→        </Button>
+   649→      </div>
+   650→
+   651→      <button
+   652→        onClick={onNext}
+   653→        className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600 transition-colors py-2"
+   654→      >
+   655→        تخطي، سأضيفها لاحقاً
+   656→      </button>
+   657→    </div>
+   658→  );
+   659→}
+   660→
+   661→/* ═══════════════════════════════════════════
+   662→   Step 4: Celebration / Ready
+   663→   ═══════════════════════════════════════════ */
+   664→
+   665→function Step4Ready() {
+   666→  const { setView } = useApp();
+   667→  const [copied, setCopied] = useState(false);
+   668→  const storeUrl = 'dokani.mr/botique-ennokhba';
+   669→
+   670→  const handleCopy = async () => {
+   671→    try {
+   672→      await navigator.clipboard.writeText(storeUrl);
+   673→      setCopied(true);
+   674→      setTimeout(() => setCopied(false), 2000);
+   675→    } catch {
+   676→      // Fallback for environments without clipboard API
+   677→      const textArea = document.createElement('textarea');
+   678→      textArea.value = storeUrl;
+   679→      document.body.appendChild(textArea);
+   680→      textArea.select();
+   681→      document.execCommand('copy');
+   682→      document.body.removeChild(textArea);
+   683→      setCopied(true);
+   684→      setTimeout(() => setCopied(false), 2000);
+   685→    }
+   686→  };
+   687→
+   688→  const handleWhatsAppShare = () => {
+   689→    const message = `🛒 تفضل بزيارة متجري على دكاني!\n${storeUrl}`;
+   690→    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+   691→    window.open(whatsappUrl, '_blank');
+   692→  };
+   693→
+   694→  return (
+   695→    <div className="animate-[fade-in_0.4s_ease-out] text-center">
+   696→      {/* Celebration animation */}
+   697→      <div className="relative mb-6">
+   698→        {/* Animated rings */}
+   699→        <div className="absolute inset-0 flex items-center justify-center">
+   700→          <div className="w-28 h-28 rounded-full border-2 border-[#0F7A4F]/10 animate-[ping_2s_ease-out_infinite]" />
+   701→        </div>
+   702→        <div className="absolute inset-0 flex items-center justify-center">
+   703→          <div className="w-24 h-24 rounded-full border-2 border-[#D6A84F]/10 animate-[ping_2s_ease-out_infinite_0.3s]" />
+   704→        </div>
+   705→
+   706→        <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#0F7A4F] to-[#0a5e3c] shadow-2xl shadow-[#0F7A4F]/30 animate-[bounce-in_0.6s_ease-out]">
+   707→          <PartyPopper className="h-9 w-9 text-white" />
+   708→        </div>
+   709→      </div>
+   710→
+   711→      {/* Confetti emoji row */}
+   712→      <div className="flex justify-center gap-2 mb-4 text-2xl animate-[fade-in_0.8s_ease-out_0.3s_both]">
+   713→        <span className="animate-[float_3s_ease-in-out_infinite]">🎉</span>
+   714→        <span className="animate-[float_3s_ease-in-out_infinite_0.3s]">✨</span>
+   715→        <span className="animate-[float_3s_ease-in-out_infinite_0.6s]">🎊</span>
+   716→        <span className="animate-[float_3s_ease-in-out_infinite_0.9s]">🌟</span>
+   717→        <span className="animate-[float_3s_ease-in-out_infinite_1.2s]">🎉</span>
+   718→      </div>
+   719→
+   720→      <h2 className="text-2xl font-bold text-gray-900 mb-2">
+   721→        تهانينا! متجرك جاهز لاستقبال الطلبات
+   722→      </h2>
+   723→      <p className="text-sm text-gray-500 mb-8 max-w-xs mx-auto leading-relaxed">
+   724→        شارك رابط متجرك مع زبائنك وابدأ في تلقي الطلبات الآن
+   725→      </p>
+   726→
+   727→      {/* Store URL Card */}
+   728→      <Card className="rounded-2xl border-0 shadow-sm bg-gradient-to-br from-white to-gray-50/50 mb-6 overflow-hidden">
+   729→        <CardContent className="p-5">
+   730→          <div className="flex items-center gap-1 mb-3">
+   731→            <Sparkles className="h-4 w-4 text-[#D6A84F]" />
+   732→            <span className="text-xs font-medium text-gray-400">رابط متجرك</span>
+   733→          </div>
+   734→          <div className="flex items-center gap-2 p-3 rounded-xl bg-[#0F7A4F]/5 border border-[#0F7A4F]/10">
+   735→            <ShoppingBag className="h-5 w-5 text-[#0F7A4F] shrink-0" />
+   736→            <span
+   737→              className="text-sm font-bold text-[#0F7A4F] flex-1 truncate"
+   738→              dir="ltr"
+   739→            >
+   740→              {storeUrl}
+   741→            </span>
+   742→            <button
+   743→              onClick={handleCopy}
+   744→              className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+   745→                copied
+   746→                  ? 'bg-[#0F7A4F] text-white'
+   747→                  : 'bg-white text-gray-400 hover:text-[#0F7A4F] hover:bg-white shadow-sm border border-gray-100'
+   748→              }`}
+   749→              aria-label="نسخ الرابط"
+   750→            >
+   751→              {copied ? (
+   752→                <Check className="h-4 w-4" />
+   753→              ) : (
+   754→                <Copy className="h-4 w-4" />
+   755→              )}
+   756→            </button>
+   757→          </div>
+   758→        </CardContent>
+   759→      </Card>
+   760→
+   761→      {/* WhatsApp Share */}
+   762→      <Button
+   763→        onClick={handleWhatsAppShare}
+   764→        className="w-full h-12 rounded-xl bg-[#25D366] hover:bg-[#1ebe5a] text-white font-semibold text-sm shadow-lg shadow-[#25D366]/20 transition-all hover:shadow-xl hover:shadow-[#25D366]/30 active:scale-[0.98] mb-3"
+   765→      >
+   766→        <MessageCircle className="h-5 w-5 ml-2" />
+   767→        مشاركة على واتساب
+   768→      </Button>
+   769→
+   770→      {/* Dashboard Button */}
+   771→      <Button
+   772→        onClick={() => setView('merchant-dashboard')}
+   773→        className="w-full h-12 rounded-xl bg-[#0F7A4F] hover:bg-[#0a5e3c] text-white font-semibold text-sm shadow-lg shadow-[#0F7A4F]/20 transition-all hover:shadow-xl hover:shadow-[#0F7A4F]/30 active:scale-[0.98]"
+   774→      >
+   775→        <Sparkles className="h-5 w-5 ml-2" />
+   776→        الدخول إلى لوحة التحكم
+   777→      </Button>
+   778→    </div>
+   779→  );
+   780→}
+   781→
+   782→/* ═══════════════════════════════════════════
+   783→   MAIN: OnboardingFlow
+   784→   ═══════════════════════════════════════════ */
+   785→
+   786→export default function OnboardingFlow() {
+   787→  const { currentView } = useApp();
+   788→  const [step, setStep] = useState(1);
+   789→
+   790→  // Only render for onboarding view
+   791→  if (currentView !== 'onboarding') return null;
+   792→
+   793→  const goNext = () => setStep((s) => Math.min(s + 1, 4));
+   794→  const goBack = () => setStep((s) => Math.max(s - 1, 1));
+   795→
+   796→  return (
+   797→    <div
+   798→      className="relative min-h-screen flex items-center justify-center px-4 py-12"
+   799→      style={{
+   800→        background:
+   801→          'linear-gradient(160deg, #f0faf4 0%, #e8f5ee 25%, #FAFAF7 55%, #fef9ef 100%)',
+   802→      }}
+   803→    >
+   804→      {/* Decorative elements */}
+   805→      <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-[#0F7A4F]/[0.03] translate-x-1/3 -translate-y-1/3" />
+   806→      <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-[#D6A84F]/[0.03] -translate-x-1/3 translate-y-1/3" />
+   807→      <div className="absolute top-1/3 right-1/4 w-48 h-48 rounded-full bg-[#0F7A4F]/[0.02]" />
+   808→
+   809→      <div className="w-full max-w-lg mx-auto">
+   810→        {/* Logo / Back */}
+   811→        <div className="flex items-center gap-3 mb-8">
+   812→          {step > 1 && step < 4 && (
+   813→            <button
+   814→              onClick={goBack}
+   815→              className="w-9 h-9 rounded-xl bg-white/80 backdrop-blur-sm border border-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-white shadow-sm transition-all"
+   816→              aria-label="السابق"
+   817→            >
+   818→              <ArrowRight className="h-4 w-4" />
+   819→            </button>
+   820→          )}
+   821→          <div className="flex items-center gap-2">
+   822→            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F7A4F] to-[#0a5e3c] flex items-center justify-center shadow-lg shadow-[#0F7A4F]/20">
+   823→              <ShoppingBag className="h-5 w-5 text-white" />
+   824→            </div>
+   825→            <span className="text-lg font-bold text-[#0F7A4F]">دكاني</span>
+   826→          </div>
+   827→          <span className="text-xs text-gray-400 mr-auto">
+   828→            الخطوة {step} من 4
+   829→          </span>
+   830→        </div>
+   831→
+   832→        {/* Progress Bar */}
+   833→        <ProgressBar step={step} />
+   834→
+   835→        {/* Step Content */}
+   836→        <div className="min-h-[400px]">
+   837→          {step === 1 && <Step1Account onNext={goNext} />}
+   838→          {step === 2 && <Step2StoreInfo onNext={goNext} onBack={goBack} />}
+   839→          {step === 3 && <Step3Products onNext={goNext} onBack={goBack} />}
+   840→          {step === 4 && <Step4Ready />}
+   841→        </div>
+   842→      </div>
+   843→
+   844→      {/* Keyframe animations */}
+   845→      <style jsx>{`
+   846→        @keyframes fade-in {
+   847→          from {
+   848→            opacity: 0;
+   849→            transform: translateY(12px);
+   850→          }
+   851→          to {
+   852→            opacity: 1;
+   853→            transform: translateY(0);
+   854→          }
+   855→        }
+   856→        @keyframes bounce-in {
+   857→          0% {
+   858→            opacity: 0;
+   859→            transform: scale(0.3);
+   860→          }
+   861→          50% {
+   862→            transform: scale(1.08);
+   863→          }
+   864→          70% {
+   865→            transform: scale(0.95);
+   866→          }
+   867→          100% {
+   868→            opacity: 1;
+   869→            transform: scale(1);
+   870→          }
+   871→        }
+   872→        @keyframes float {
+   873→          0%,
+   874→          100% {
+   875→            transform: translateY(0);
+   876→          }
+   877→          50% {
+   878→            transform: translateY(-6px);
+   879→          }
+   880→        }
+   881→        @keyframes ping {
+   882→          0% {
+   883→            transform: scale(1);
+   884→            opacity: 1;
+   885→          }
+   886→          75%,
+   887→          100% {
+   888→            transform: scale(1.6);
+   889→            opacity: 0;
+   890→          }
+   891→        }
+   892→      `}</style>
+   893→    </div>
+   894→  );
+   895→}
