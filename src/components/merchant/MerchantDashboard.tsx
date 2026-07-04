@@ -9,9 +9,11 @@ import {
   DEMO_ORDERS,
   DEMO_INVOICES,
   formatMRU,
+} from '@/lib/demo-data';
+import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
-} from '@/lib/demo-data';
+} from '@/lib/types';
 import type { DemoProduct, DemoCategory } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  CustomersModule, CampaignsModule, CouponsModule,
+  DeliveryModule, AutomationModule,
+} from '@/components/merchant/AdditionalModules';
+import OrdersModule from '@/components/orders/OrdersModule';
 
 import {
   LayoutDashboard, ShoppingBag, Package, FolderOpen, Users, Megaphone,
@@ -1457,21 +1464,21 @@ export default function MerchantDashboard() {
       case 'invoices':
         return <InvoicesView />;
       case 'orders':
-        return <PlaceholderView title="الطلبات" description="إدارة ومتابعة جميع طلبات المتجر. قريباً ستتمكن من عرض وتعديل حالات الطلبات." />;
-      case 'customers':
-        return <PlaceholderView title="العملاء" description="قاعدة بيانات العملاء مع إمكانية التواصل وإدارة العلاقات." />;
-      case 'campaigns':
-        return <PlaceholderView title="الحملات" description="إنشاء وإدارة حملات التسويق عبر واتساب وسائل التواصل." />;
-      case 'coupons':
-        return <PlaceholderView title="الكوبونات" description="إنشاء أكواد خصم وإدارة استخداماتها." />;
-      case 'delivery':
-        return <PlaceholderView title="التوصيل" description="إدارة مناطق التوصيل والرسوم." />;
-      case 'delivery-agents':
-        return <PlaceholderView title="المندوبون" description="إدارة مندوبي التوصيل وتتبع مهامهم." />;
-      case 'automation':
-        return <PlaceholderView title="الأتمتة" description="إعداد أتمتة الرسائل والإشعارات." />;
       case 'order-details':
-        return <PlaceholderView title="تفاصيل الطلب" description="عرض تفاصيل الطلب الكاملة مع إمكانية تعديل الحالة." />;
+        return <OrdersModule />;
+      case 'customers':
+        return <CustomersModule />;
+      case 'campaigns':
+      case 'campaign-form':
+        return <CampaignsModule />;
+      case 'coupons':
+      case 'coupon-form':
+        return <CouponsModule />;
+      case 'delivery':
+      case 'delivery-agents':
+        return <DeliveryModule />;
+      case 'automation':
+        return <AutomationModule />;
       default:
         return <DashboardOverview />;
     }

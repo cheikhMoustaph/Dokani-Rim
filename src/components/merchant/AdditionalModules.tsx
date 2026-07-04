@@ -3,10 +3,11 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/lib/store';
 import {
-  DEMO_CUSTOMERS, CUSTOMER_STATUS_LABELS, CUSTOMER_SOURCE_LABELS,
-  DEMO_CAMPAIGNS, CAMPAIGN_TYPE_LABELS,
+  DEMO_CUSTOMERS,
+  DEMO_CAMPAIGNS,
   DEMO_COUPONS, DEMO_DELIVERY_ZONES, DEMO_DELIVERY_AGENTS, DEMO_AUTOMATIONS, formatMRU,
 } from '@/lib/demo-data';
+import { CUSTOMER_STATUS_LABELS, CUSTOMER_SOURCE_LABELS, CAMPAIGN_TYPE_LABELS } from '@/lib/types';
 import type { DemoCustomer, DemoCampaign, DemoCoupon, DemoDeliveryZone, DemoDeliveryAgent, DemoAutomation } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';

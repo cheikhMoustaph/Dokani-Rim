@@ -7,9 +7,8 @@ import {
   DEMO_STORES,
   DEMO_INVOICES,
   formatMRU,
-  STORE_STATUS_LABELS,
-  STORE_STATUS_COLORS,
 } from '@/lib/demo-data';
+import { STORE_STATUS_LABELS, STORE_STATUS_COLORS } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import {

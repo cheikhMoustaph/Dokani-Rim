@@ -4,14 +4,16 @@ import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '@/lib/store';
 import {
   DEMO_ORDERS,
+  formatMRU,
+  WHATSAPP_TEMPLATES,
+} from '@/lib/demo-data';
+import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
   PAYMENT_STATUS_COLORS,
-  formatMRU,
-  WHATSAPP_TEMPLATES,
-} from '@/lib/demo-data';
-import { CUSTOMER_SOURCE_LABELS } from '@/lib/types';
+  CUSTOMER_SOURCE_LABELS,
+} from '@/lib/types';
 import type { DemoOrder, OrderStatus, PaymentStatus } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
