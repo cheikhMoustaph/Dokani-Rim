@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============ PLATFORM LEVEL ============
+
+model PlatformUser {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  phone         String?
+  password      String?
+  role          String   @default("store_owner") // platform_owner, platform_admin, support_agent, sales, finance, store_owner, store_admin, manager, sales_staff, inventory, delivery_agent, support_staff, marketing
+  avatar        String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  stores              StoreOwner[]
+  managedStores       StoreAdmin[]
+  deliveryAgentProfiles StoreDeliveryAgent[]
+  sentMessages        MessageLog[]
+}
+
+// ============ STORE / MERCHANT ============
+
+model Store {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  logo          String?
+  phone         String
+  whatsapp      String?
+  city          String
+  address       String?
+  language      String   @default("ar")
+  primaryColor  String   @default("#0F7A4F")
+  accentColor   String   @default("#D6A84F")
+  status        String   @default("trial") // trial, active, expired, suspended, pending_payment, cancelled
+  trialEndsAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  owners        StoreOwner[]
+  admins        StoreAdmin[]
+  products      Product[]
+  categories    Category[]
+  orders        Order[]
+  customers     Customer[]
+  campaigns     Campaign[]
+  coupons       Coupon[]
+  deliveryZones DeliveryZone[]
+  deliveryAgents StoreDeliveryAgent[]
+  invoices      Invoice[]
+  branches      Branch[]
+  automations   Automation[]
+  returnPolicy  String?
+  paymentMethods String @default("cash,manual_transfer")
+
+  // Default branch auto-created
+}
+
+model Branch {
+  id            String   @id @default(cuid())
+  storeId       String
+  name          String
+  city          String
+  address       String?
+  whatsapp      String?
+  isDefault     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model StoreOwner {
+  id            String   @id @default(cuid())
+  storeId       String
+  userId        String
+  createdAt     DateTime @default(now())
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user          PlatformUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StoreAdmin {
+  id            String   @id @default(cuid())
+  storeId       String
+  userId        String
+  role          String   @default("manager") // manager, sales_staff, inventory, support_staff, marketing
+  createdAt     DateTime @default(now())
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user          PlatformUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============ PRODUCTS ============
+
+model Product {
+  id              String   @id @default(cuid())
+  storeId         String
+  categoryId      String?
+  name            String
+  description     String?
+  price           Float
+  compareAtPrice  Float?
+  images          String   @default("[]") // JSON array
+  status          String   @default("available") // available, unavailable
+  stockQuantity   Int      @default(0)
+  sizes           String   @default("[]") // JSON array
+  colors          String   @default("[]") // JSON array
+  sku             String?
+  customDeliveryCost Float?
+  isBestSeller    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category        Category? @relation(fields: [categoryId], references: [id])
+  orderItems      OrderItem[]
+}
+
+model Category {
+  id              String   @id @default(cuid())
+  storeId         String
+  name            String
+  image           String?
+  status          String   @default("active")
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products        Product[]
+}
+
+// ============ ORDERS ============
+
+model Order {
+  id              String   @id @default(cuid())
+  storeId         String
+  orderNumber     String   @unique
+  customerName    String
+  customerPhone   String
+  customerCity    String
+  customerArea    String?
+  deliveryMethod  String   @default("delivery") // delivery, pickup
+  paymentMethod   String   @default("cash") // cash, manual_transfer
+  paymentProof    String?
+  orderNotes      String?
+  internalNotes   String?
+  status          String   @default("new") // new, contacted, waiting_payment, paid, preparing, ready_delivery, on_the_way, delivered, cancelled, returned, rejected, customer_not_responding
+  paymentStatus   String   @default("unpaid") // unpaid, waiting_confirmation, paid, rejected, refunded
+  subtotal        Float
+  deliveryFee     Float    @default(0)
+  total           Float
+  source          String   @default("direct") // whatsapp, instagram, facebook, tiktok, snapchat, direct, paid_ad, friend_referral, other
+  acceptPolicy    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items           OrderItem[]
+  customer        Customer? @relation(fields: [customerPhone], references: [phone])
+  deliveryUpdates DeliveryUpdate[]
+  deliveryAssignment DeliveryAssignment?
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  productId       String
+  productName     String
+  productPrice    Float
+  quantity        Int
+  total           Float
+  size            String?
+  color           String?
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id])
+}
+
+// ============ CUSTOMERS (CRM) ============
+
+model Customer {
+  id              String   @id @default(cuid())
+  storeId         String
+  name            String
+  phone           String   @unique
+  city            String?
+  area            String?
+  status          String   @default("new") // new, repeat, vip, inactive
+  notes           String?
+  source          String   @default("direct")
+  firstOrderDate  DateTime?
+  lastOrderDate   DateTime?
+  lastContactDate DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders          Order[]
+}
+
+// ============ CAMPAIGNS ============
+
+model Campaign {
+  id              String   @id @default(cuid())
+  storeId         String
+  name            String
+  type            String   // single_product, discount, coupon, whatsapp_leads, new_store_launch, reactivation, seasonal, whatsapp_order, lead_magnet
+  channel         String   @default("whatsapp") // whatsapp, instagram, facebook, tiktok, snapchat, other
+  linkedProductId String?
+  linkedCategoryId String?
+  couponId        String?
+  trackingUrl     String?
+  status          String   @default("active") // active, paused, ended
+  visits          Int      @default(0)
+  orders          Int      @default(0)
+  customers       Int      @default(0)
+  revenue         Float    @default(0)
+  conversionRate  Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  coupon          Coupon?  @relation(fields: [couponId], references: [id])
+}
+
+// ============ COUPONS ============
+
+model Coupon {
+  id              String   @id @default(cuid())
+  storeId         String
+  code            String
+  discountType    String   @default("percentage") // percentage, fixed
+  discountValue   Float
+  usageLimit      Int?
+  usageCount      Int      @default(0)
+  expiryDate      DateTime?
+  status          String   @default("active") // active, inactive
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  campaigns       Campaign[]
+}
+
+// ============ DELIVERY ============
+
+model DeliveryZone {
+  id              String   @id @default(cuid())
+  storeId         String
+  city            String
+  area            String
+  fee             Float    @default(0)
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model StoreDeliveryAgent {
+  id              String   @id @default(cuid())
+  storeId         String
+  userId          String
+  name            String
+  phone           String
+  status          String   @default("available") // available, busy, offline
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user            PlatformUser @relation(fields: [userId], references: [id])
+  assignments     DeliveryAssignment[]
+}
+
+model DeliveryAssignment {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  agentId         String
+  assignedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  order           Order    @relation(fields: [orderId], references: [id])
+  agent           StoreDeliveryAgent @relation(fields: [agentId], references: [id])
+}
+
+model DeliveryUpdate {
+  id              String   @id @default(cuid())
+  orderId         String
+  status          String   // waiting_preparation, ready_delivery, assigned_agent, on_the_way, delivered, failed, returned
+  note            String?
+  updatedBy       String?
+  createdAt       DateTime @default(now())
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ============ BILLING / INVOICES ============
+
+model Invoice {
+  id              String   @id @default(cuid())
+  storeId         String
+  invoiceNumber   String   @unique
+  merchantName    String
+  storeName       String
+  phone           String?
+  plan            String   @default("basic") // basic, pro, enterprise
+  duration        String   @default("monthly") // monthly, yearly
+  amount          Float
+  paymentMethod   String   @default("bankily") // bankily, masrvi, cash
+  paymentProof    String?
+  status          String   @default("draft") // draft, pending_payment, paid, rejected, cancelled, refunded
+  notes           String?
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+// ============ AUTOMATION ============
+
+model Automation {
+  id              String   @id @default(cuid())
+  storeId         String
+  name            String
+  trigger         String   // new_order, waiting_payment, payment_confirmed, on_the_way, delivered, customer_not_responding, trial_ending, trial_expired
+  action          String   // send_whatsapp, show_notification, change_status, add_tag
+  actionConfig    String   @default("{}") // JSON config
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+// ============ MESSAGE LOG ============
+
+model MessageLog {
+  id              String   @id @default(cuid())
+  storeId         String
+  customerId      String?
+  orderId         String?
+  sentById        String
+  templateType    String
+  message         String
+  channel         String   @default("whatsapp")
+  createdAt       DateTime @default(now())
+
+  sentBy          PlatformUser @relation(fields: [sentById], references: [id])
+}
