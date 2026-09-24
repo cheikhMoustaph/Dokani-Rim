@@ -134,9 +134,12 @@ function Sidebar() {
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#0F7A4F] text-white">
       {/* Logo */}
-      <div className="p-5 pb-6 border-b border-white/15">
-        <h1 className="text-2xl font-bold tracking-tight">دكاني</h1>
-        <p className="text-sm text-white/70 mt-1">بوتيك النخبة</p>
+      <div className="p-5 pb-6 border-b border-white/15 flex items-center gap-3">
+        <img src="/logo-image.png" alt="دكاني" className="h-9 w-9 rounded-lg" />
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight leading-none">دكاني</h1>
+          <p className="text-sm text-white/70 mt-1">بوتيك النخبة</p>
+        </div>
       </div>
 
       {/* Nav Items */}

@@ -232,9 +232,11 @@ export default function LandingPage() {
         <div className="flex h-16 items-center justify-between sm:h-20">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0F7A4F] text-white sm:h-11 sm:w-11">
-              <ShoppingCart className="size-5 sm:size-6" />
-            </div>
+            <img
+              src="/logo-image.png"
+              alt="دكاني"
+              className="h-10 w-10 rounded-xl sm:h-11 sm:w-11"
+            />
             <span
               className={`text-2xl font-bold sm:text-3xl ${
                 scrolled ? 'text-[#0F7A4F]' : 'text-white'
@@ -810,9 +812,7 @@ export default function LandingPage() {
           {/* Brand column */}
           <div className="col-span-2 sm:col-span-2 lg:col-span-1">
             <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white">
-                <ShoppingCart className="size-5" />
-              </div>
+              <img src="/logo-image.png" alt="دكاني" className="h-10 w-10 rounded-xl" />
               <span className="text-2xl font-bold text-white">دكاني</span>
             </div>
             <p className="mb-6 max-w-xs text-sm leading-relaxed text-white/60">

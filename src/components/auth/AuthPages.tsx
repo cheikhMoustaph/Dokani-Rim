@@ -172,9 +172,7 @@ function LoginView() {
       <CardHeader className="text-center pb-2 pt-8 px-8">
         {/* Logo */}
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0F7A4F] to-[#0a5e3c] flex items-center justify-center shadow-lg shadow-[#0F7A4F]/20">
-            <ShoppingBag className="h-8 w-8 text-white" />
-          </div>
+          <img src="/logo-image.png" alt="دكاني" className="w-16 h-16 rounded-2xl shadow-lg shadow-[#0F7A4F]/20" />
         </div>
         <h1 className="text-2xl font-bold text-[#0F7A4F]">دكاني</h1>
         <p className="text-gray-500 text-sm mt-1">تسجيل الدخول إلى حسابك</p>
@@ -312,9 +310,7 @@ function SignupView() {
     <Card className="w-full max-w-md mx-auto rounded-2xl shadow-xl shadow-black/5 border-0">
       <CardHeader className="text-center pb-2 pt-8 px-8">
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#0F7A4F] to-[#0a5e3c] flex items-center justify-center shadow-lg shadow-[#0F7A4F]/20">
-            <ShoppingBag className="h-8 w-8 text-white" />
-          </div>
+          <img src="/logo-image.png" alt="دكاني" className="w-16 h-16 rounded-2xl shadow-lg shadow-[#0F7A4F]/20" />
         </div>
         <h1 className="text-2xl font-bold text-[#0F7A4F]">إنشاء حساب جديد</h1>
         <p className="text-gray-500 text-sm mt-1">انضم إلى دكاني وابدأ البيع اليوم</p>
