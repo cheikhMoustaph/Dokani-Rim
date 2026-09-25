@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/lib/store';
+import { assetUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -231,19 +232,14 @@ export default function LandingPage() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between sm:h-20">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <img
-              src="/logo-image.png"
-              alt="دكاني"
-              className="h-10 w-10 rounded-xl sm:h-11 sm:w-11"
-            />
-            <span
-              className={`text-2xl font-bold sm:text-3xl ${
-                scrolled ? 'text-[#0F7A4F]' : 'text-white'
+              src={assetUrl('/logo-image.png')}
+              alt="دكاني — Dokani"
+              className={`h-10 sm:h-12 w-auto object-contain transition-all duration-300 ${
+                scrolled ? '' : 'brightness-0 invert'
               }`}
-            >
-              دكاني
-            </span>
+            />
           </div>
 
           {/* Desktop buttons */}
@@ -775,14 +771,15 @@ export default function LandingPage() {
             <Zap className="ml-2 size-5" />
             افتح متجرك مجانًا
           </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="h-13 rounded-xl border-2 border-white/30 bg-transparent px-8 text-base font-semibold text-white transition-all hover:border-white/60 hover:bg-white/10 sm:h-14 sm:text-lg"
+          <a
+            href="https://wa.me/22200000000"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-13 items-center justify-center rounded-xl border-2 border-white/30 bg-transparent px-8 text-base font-semibold text-white transition-all hover:border-white/60 hover:bg-white/10 sm:h-14 sm:text-lg"
           >
             <MessageCircle className="ml-2 size-5" />
             تواصل معنا عبر واتساب
-          </Button>
+          </a>
         </div>
 
         {/* Trust badges */}
@@ -811,9 +808,8 @@ export default function LandingPage() {
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-12">
           {/* Brand column */}
           <div className="col-span-2 sm:col-span-2 lg:col-span-1">
-            <div className="mb-4 flex items-center gap-2">
-              <img src="/logo-image.png" alt="دكاني" className="h-10 w-10 rounded-xl" />
-              <span className="text-2xl font-bold text-white">دكاني</span>
+            <div className="mb-4">
+              <img src={assetUrl('/logo-image.png')} alt="دكاني — Dokani" className="h-10 w-auto brightness-0 invert" />
             </div>
             <p className="mb-6 max-w-xs text-sm leading-relaxed text-white/60">
               المنصة الأولى لإدارة التجارة الإلكترونية في موريتانيا.

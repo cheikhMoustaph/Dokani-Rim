@@ -9,6 +9,7 @@ import {
   formatMRU,
 } from '@/lib/demo-data';
 import { STORE_STATUS_LABELS, STORE_STATUS_COLORS } from '@/lib/types';
+import { assetUrl } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -268,10 +269,8 @@ export default function AdminDashboard() {
           </Button>
 
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: '#0F7A4F' }}>
-              <Store className="h-5 w-5 text-white" />
-            </div>
-            <h1 className="text-lg font-bold text-gray-900 md:text-xl">
+            <img src={assetUrl('/logo-image.png')} alt="دكاني — Dokani" className="h-8 w-auto" />
+            <h1 className="text-base font-bold text-gray-700 md:text-lg hidden sm:block">
               لوحة إدارة المنصة
             </h1>
           </div>

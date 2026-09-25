@@ -6,6 +6,7 @@ import { DEMO_STORES, DEMO_PRODUCTS, DEMO_CATEGORIES, DEMO_PAYMENT_METHODS, DEMO
 import { PAYMENT_METHOD_LABELS, SOCIAL_PLATFORM_LABELS, type PaymentMethodType, type SocialPlatform } from '@/lib/types';
 import type { DemoProduct, CartItem } from '@/lib/types';
 import { cartItems as initialCart } from '@/lib/demo-data';
+import { assetUrl } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -1145,9 +1146,11 @@ function TopBar({ cartCount, onCartOpen }: { cartCount: number; onCartOpen: () =
     <div className="bg-white border-b" style={{ borderColor: '#e8e8e0' }}>
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
-        <span className="text-lg font-bold tracking-tight" style={{ color: '#0F7A4F' }}>
-          دكاني
-        </span>
+        <img
+          src={assetUrl('/logo-image.png')}
+          alt="دكاني — Dokani"
+          className="h-8 w-auto"
+        />
 
         <div className="flex items-center gap-3">
           {/* Create Store Link */}
@@ -1461,12 +1464,10 @@ function StorefrontFooter({ store }: { store: { name: string; whatsapp: string }
 
         <Separator className="my-6" />
 
-        <div className="text-center text-xs text-gray-400">
-          بدعم من{' '}
-          <span className="font-bold" style={{ color: '#0F7A4F' }}>
-            دكاني
-          </span>{' '}
-          — منصة التجارة الإلكترونية في موريتانيا
+        <div className="flex flex-col items-center gap-2 text-center text-xs text-gray-400">
+          <span>بدعم من</span>
+          <img src={assetUrl('/logo-image.png')} alt="دكاني — Dokani" className="h-6 w-auto opacity-70" />
+          <span>منصة التجارة الإلكترونية في موريتانيا</span>
         </div>
       </div>
     </footer>

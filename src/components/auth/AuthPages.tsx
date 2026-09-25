@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useApp } from '@/lib/store';
+import { assetUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -170,11 +171,9 @@ function LoginView() {
   return (
     <Card className="w-full max-w-md mx-auto rounded-2xl shadow-xl shadow-black/5 border-0">
       <CardHeader className="text-center pb-2 pt-8 px-8">
-        {/* Logo */}
-        <div className="flex justify-center mb-4">
-          <img src="/logo-image.png" alt="دكاني" className="w-16 h-16 rounded-2xl shadow-lg shadow-[#0F7A4F]/20" />
+        <div className="flex justify-center mb-5">
+          <img src={assetUrl('/logo-image.png')} alt="دكاني — Dokani" className="h-12 w-auto" />
         </div>
-        <h1 className="text-2xl font-bold text-[#0F7A4F]">دكاني</h1>
         <p className="text-gray-500 text-sm mt-1">تسجيل الدخول إلى حسابك</p>
       </CardHeader>
 
@@ -309,10 +308,9 @@ function SignupView() {
   return (
     <Card className="w-full max-w-md mx-auto rounded-2xl shadow-xl shadow-black/5 border-0">
       <CardHeader className="text-center pb-2 pt-8 px-8">
-        <div className="flex justify-center mb-4">
-          <img src="/logo-image.png" alt="دكاني" className="w-16 h-16 rounded-2xl shadow-lg shadow-[#0F7A4F]/20" />
+        <div className="flex justify-center mb-5">
+          <img src={assetUrl('/logo-image.png')} alt="دكاني — Dokani" className="h-12 w-auto" />
         </div>
-        <h1 className="text-2xl font-bold text-[#0F7A4F]">إنشاء حساب جديد</h1>
         <p className="text-gray-500 text-sm mt-1">انضم إلى دكاني وابدأ البيع اليوم</p>
       </CardHeader>
 
@@ -385,8 +383,8 @@ function ForgotPasswordView() {
     <Card className="w-full max-w-md mx-auto rounded-2xl shadow-xl shadow-black/5 border-0">
       <CardHeader className="text-center pb-2 pt-8 px-8">
         <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-amber-100 to-amber-50 flex items-center justify-center">
-            <Lock className="h-8 w-8 text-[#D6A84F]" />
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center border border-amber-200">
+            <Lock className="h-7 w-7 text-[#D6A84F]" />
           </div>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">إعادة تعيين كلمة المرور</h1>
@@ -488,29 +486,7 @@ export default function AuthPages() {
         {currentView === 'forgot-password' && <ForgotPasswordView />}
       </div>
 
-      {/* Keyframe animation injected via style tag */}
-      <style jsx>{`
-        @keyframes fade-in-up {
-          from {
-            opacity: 0;
-            transform: translateY(16px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes scale-in {
-          from {
-            opacity: 0;
-            transform: scale(0.5);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-      `}</style>
+      {/* Keyframe animations via globals */}
     </div>
   );
 }

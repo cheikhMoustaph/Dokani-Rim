@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, useCallback } from 'react';
 import { useApp } from '@/lib/store';
+import { assetUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -818,12 +819,7 @@ export default function OnboardingFlow() {
               <ArrowRight className="h-4 w-4" />
             </button>
           )}
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F7A4F] to-[#0a5e3c] flex items-center justify-center shadow-lg shadow-[#0F7A4F]/20">
-              <ShoppingBag className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-bold text-[#0F7A4F]">دكاني</span>
-          </div>
+          <img src={assetUrl('/logo-image.png')} alt="دكاني — Dokani" className="h-8 w-auto" />
           <span className="text-xs text-gray-400 mr-auto">
             الخطوة {step} من 4
           </span>
@@ -841,55 +837,7 @@ export default function OnboardingFlow() {
         </div>
       </div>
 
-      {/* Keyframe animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes bounce-in {
-          0% {
-            opacity: 0;
-            transform: scale(0.3);
-          }
-          50% {
-            transform: scale(1.08);
-          }
-          70% {
-            transform: scale(0.95);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-6px);
-          }
-        }
-        @keyframes ping {
-          0% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          75%,
-          100% {
-            transform: scale(1.6);
-            opacity: 0;
-          }
-        }
-      `}</style>
+      {/* Keyframe animations defined in globals.css */}
     </div>
   );
 }

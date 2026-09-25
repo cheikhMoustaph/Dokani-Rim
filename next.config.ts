@@ -1,12 +1,18 @@
 import type { NextConfig } from "next";
 
+const isGithubPages = process.env.GITHUB_PAGES === 'true';
+const basePath = isGithubPages ? "/Dokani-Rim" : "";
+
 const nextConfig: NextConfig = {
   output: "export",
-  basePath: "/Dokani-Rim",
+  basePath,
+  assetPrefix: basePath,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   images: {
     unoptimized: true,
   },
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },
