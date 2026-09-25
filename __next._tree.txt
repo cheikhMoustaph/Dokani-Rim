@@ -1,2 +1,2 @@
-:HL["/Dokani-Rim/_next/static/chunks/8f06f3d085821928.css","style"]
-0:{"buildId":"3it3Uk8Ruf_KFCAF9uvQy","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
+:HL["/Dokani-Rim/_next/static/chunks/44en-7qvgyojh.css","style"]
+0:{"tree":{"name":"","param":null,"prefetchHints":4176,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":4256,"slots":null}}},"staleTime":300,"buildId":"plntZzm-cr1Xy5c1ebNaT"}
